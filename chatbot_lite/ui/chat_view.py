@@ -13,7 +13,7 @@ class ChatView(VerticalScroll):
 
     can_focus = False
 
-    def __init__(self, **kwargs):
+    def __init__(self, code_theme: str = "monokai", **kwargs):
         super().__init__(**kwargs)
         self._current_assistant_message = ""
         self._last_assistant_message = ""
@@ -21,6 +21,7 @@ class ChatView(VerticalScroll):
         self._assistant_label = None  # 助手标签引用（用于动画）
         self._blink_timer = None  # 闪动定时器
         self._blink_phase = 0.0  # 闪动相位（0-1）
+        self._code_theme = code_theme  # Markdown 代码块主题
 
     def on_mount(self):
         """挂载时初始化"""
@@ -34,10 +35,13 @@ class ChatView(VerticalScroll):
             content: 用户消息内容
         """
         # 添加用户消息标签
-        label = Static(Text("● You", style="bold cyan"))
+        label = Static(Text("\n● You\n", style="bold cyan"))
         self.mount(label)
-        # 添加消息内容（缩进两个空格）
-        content_widget = Static(Markdown(content), classes="message-content")
+        # 添加消息内容（缩进两个空格，使用配置的代码主题，左对齐）
+        content_widget = Static(
+            Markdown(content, code_theme=self._code_theme, justify="left"),
+            classes="message-content"
+        )
         self.mount(content_widget)
         # 自动滚动到底部
         self.scroll_end(animate=False)
@@ -45,7 +49,7 @@ class ChatView(VerticalScroll):
     def append_assistant_message_start(self):
         """开始接收助手消息（流式）"""
         # 添加助手标签
-        self._assistant_label = Static(Text("● Assistant", style="bold green"), classes="assistant-label")
+        self._assistant_label = Static(Text("\n● Assistant\n", style="bold green"), classes="assistant-label")
         self.mount(self._assistant_label)
         # 创建流式输出的临时 widget（缩进两个空格）
         self._streaming_widget = Static("", classes="message-content")
@@ -76,9 +80,9 @@ class ChatView(VerticalScroll):
         # 停止闪动动画
         self._stop_blink_animation()
 
-        # 重置助手标签为正常状态
+        # 重置助手标签为正常状态（完全不透明）
         if self._assistant_label:
-            self._assistant_label.update(Text("● Assistant", style="bold green"))
+            self._assistant_label.update(Text("\n● Assistant\n", style="bold rgb(0,255,0)"))
             self._assistant_label = None
 
         # 移除流式 widget
@@ -86,14 +90,17 @@ class ChatView(VerticalScroll):
             self._streaming_widget.remove()
             self._streaming_widget = None
 
-        # 添加最终的 Markdown 渲染版本（缩进两个空格）
+        # 添加最终的 Markdown 渲染版本（缩进两个空格，使用配置的代码主题，左对齐）
         if self._current_assistant_message:
-            content_widget = Static(Markdown(self._current_assistant_message), classes="message-content")
+            content_widget = Static(
+                Markdown(self._current_assistant_message, code_theme=self._code_theme, justify="left"),
+                classes="message-content"
+            )
             self.mount(content_widget)
 
-        # 添加分割线
-        separator = Static(Text("─" * 80, style="dim"))
-        self.mount(separator)
+        ## 添加分割线
+        #separator = Static(Text("─" * 80, style="dim"))
+        #self.mount(separator)
 
         # 保存最后一条助手消息
         self._last_assistant_message = self._current_assistant_message
@@ -138,8 +145,8 @@ class ChatView(VerticalScroll):
     def _start_blink_animation(self):
         """启动闪动动画"""
         self._blink_phase = 0.0
-        # 每 0.05 秒更新一次（每秒 20 帧）
-        self._blink_timer = self.set_interval(0.05, self._update_blink)
+        # 每 0.1 秒更新一次，2 秒一个周期
+        self._blink_timer = self.set_interval(0.1, self._update_blink)
 
     def _stop_blink_animation(self):
         """停止闪动动画"""
@@ -154,11 +161,11 @@ class ChatView(VerticalScroll):
             self._stop_blink_animation()
             return
 
-        # 更新相位（0.05秒 * 20帧 = 1秒一个周期）
+        # 更新相位（0.1秒 * 20次 = 2秒一个周期）
         self._blink_phase = (self._blink_phase + 0.05) % 1.0
 
         # 计算透明度（通过 cos 函数实现平滑过渡）
-        # 0.5 秒内从 1.0 降到 0.5，再升到 1.0
+        # 范围：0.5 到 1.0
         opacity = 0.75 + 0.25 * math.cos(self._blink_phase * 2 * math.pi)
 
         # 通过调整绿色的亮度来模拟透明度
@@ -168,4 +175,4 @@ class ChatView(VerticalScroll):
         color = f"rgb({0},{brightness},{0})"
 
         # 更新标签
-        self._assistant_label.update(Text("● Assistant", style=f"bold {color}"))
+        self._assistant_label.update(Text("\n● Assistant\n", style=f"bold {color}"))

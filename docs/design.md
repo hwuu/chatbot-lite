@@ -411,15 +411,6 @@ class ChatbotApp(App):
         # 创建新会话
         await self.action_new_session()
 
-    async def action_quit_check(self):
-        """双击 Ctrl-C 退出"""
-        now = time.time()
-        if now - self.last_ctrl_c_time < 1.0:
-            self.exit()
-        else:
-            self.last_ctrl_c_time = now
-            self.notify("Press Ctrl+C again to quit")
-
     async def action_cancel(self):
         """Esc 中断生成"""
         if self.is_generating:
@@ -553,7 +544,6 @@ def detect_code_language(code: str) -> str:
 - [ ] 实现 `ui/app.py`（主应用框架）
 - [ ] 实现 `ui/chat_view.py`（Markdown 渲染）
 - [ ] 实现 `ui/input_bar.py`（多行输入 + Ctrl+Enter）
-- [ ] 实现双击 Ctrl-C 退出
 - [ ] 实现 Esc 中断生成
 
 **测试要点**：
@@ -601,7 +591,6 @@ def detect_code_language(code: str) -> str:
 ### **E2E 测试**（需 Ollama 环境）
 - 真实模型对话
 - 流式输出实时性
-- 双击 Ctrl-C 退出
 - Esc 中断生成
 
 ---

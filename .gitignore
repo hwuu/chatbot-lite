@@ -212,3 +212,6 @@ config.yaml
 
 # 对话历史（本地数据）
 .chatbot-lite/
+
+# Claude Code 本地配置
+.claude/

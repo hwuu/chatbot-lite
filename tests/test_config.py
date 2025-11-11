@@ -76,6 +76,7 @@ class TestAppConfig:
         assert config.context_strategy == "lazy_compress"
         assert config.compress_threshold == 0.85
         assert config.compress_summary_tokens == 300
+        assert config.markdown_code_theme == "monokai"
 
     def test_strategy_validation(self):
         """测试策略验证"""
@@ -98,6 +99,17 @@ class TestAppConfig:
             AppConfig(history_dir="/tmp/test", compress_threshold=-0.1)
         with pytest.raises(ValueError):
             AppConfig(history_dir="/tmp/test", compress_threshold=1.1)
+
+    def test_markdown_code_theme_validation(self):
+        """测试 Markdown 代码主题验证"""
+        # 有效主题
+        AppConfig(history_dir="/tmp/test", markdown_code_theme="monokai")
+        AppConfig(history_dir="/tmp/test", markdown_code_theme="github-dark")
+        AppConfig(history_dir="/tmp/test", markdown_code_theme="dracula")
+
+        # 无效主题
+        with pytest.raises(ValueError, match="不是有效的主题"):
+            AppConfig(history_dir="/tmp/test", markdown_code_theme="invalid_theme_xyz")
 
 
 class TestLoadConfig:

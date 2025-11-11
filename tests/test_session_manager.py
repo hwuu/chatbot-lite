@@ -72,7 +72,7 @@ class TestSessionManager:
 
         # 添加用户消息
         user_message = "Hello, how are you?"
-        manager.save_message(session_id, "user", user_message, update_title=True)
+        manager.save_message(session_id, "user", user_message)
 
         # 验证消息已保存
         session_data = manager.load_session(session_id)
@@ -80,13 +80,10 @@ class TestSessionManager:
         assert session_data["messages"][1]["role"] == "user"
         assert session_data["messages"][1]["content"] == user_message
 
-        # 验证标题已更新
-        assert session_data["title"] == user_message  # 少于 30 字符，不截断
-
     def test_save_message_assistant(self, manager):
         """测试保存助手消息"""
         session_id = manager.create_session("System prompt")
-        manager.save_message(session_id, "user", "Question", update_title=True)
+        manager.save_message(session_id, "user", "Question")
 
         # 添加助手回复
         assistant_message = "I'm doing well, thank you!"
@@ -111,17 +108,19 @@ class TestSessionManager:
         assert session_data["total_tokens"] > initial_tokens
 
     def test_update_title_with_long_message(self, manager):
-        """测试长消息截断标题"""
+        """测试更新标题方法"""
         session_id = manager.create_session("System prompt")
 
         # 添加长消息
         long_message = "This is a very long message that exceeds thirty characters"
-        manager.save_message(session_id, "user", long_message, update_title=True)
+        manager.save_message(session_id, "user", long_message)
 
-        # 验证标题被截断
+        # 手动更新标题
+        manager.update_title(session_id, "Custom Title")
+
+        # 验证标题被更新
         session_data = manager.load_session(session_id)
-        assert len(session_data["title"]) <= 30
-        assert session_data["title"].endswith("...")
+        assert session_data["title"] == "Custom Title"
 
     def test_list_sessions_empty(self, manager):
         """测试列出空会话列表"""
@@ -136,9 +135,11 @@ class TestSessionManager:
         id2 = manager.create_session("Prompt 2")
 
         # 添加消息以更新标题
-        manager.save_message(id1, "user", "First chat", update_title=True)
+        manager.save_message(id1, "user", "First chat")
+        manager.update_title(id1, "First chat")
         time.sleep(0.01)
-        manager.save_message(id2, "user", "Second chat", update_title=True)
+        manager.save_message(id2, "user", "Second chat")
+        manager.update_title(id2, "Second chat")
 
         # 列出会话
         sessions = manager.list_sessions()
@@ -166,8 +167,10 @@ class TestSessionManager:
         id1 = manager.create_session("System")
         id2 = manager.create_session("System")
 
-        manager.save_message(id1, "user", "Python tutorial", update_title=True)
-        manager.save_message(id2, "user", "JavaScript guide", update_title=True)
+        manager.save_message(id1, "user", "Python tutorial")
+        manager.update_title(id1, "Python tutorial")
+        manager.save_message(id2, "user", "JavaScript guide")
+        manager.update_title(id2, "JavaScript guide")
 
         # 搜索 "Python"
         results = manager.search_sessions("Python")
@@ -178,7 +181,7 @@ class TestSessionManager:
     def test_search_sessions_by_content(self, manager):
         """测试按内容搜索会话"""
         id1 = manager.create_session("System")
-        manager.save_message(id1, "user", "First message", update_title=True)
+        manager.save_message(id1, "user", "First message")
         manager.save_message(id1, "assistant", "I can help with Python programming")
 
         # 搜索 "Python"
@@ -191,7 +194,7 @@ class TestSessionManager:
     def test_search_sessions_case_insensitive(self, manager):
         """测试搜索不区分大小写"""
         session_id = manager.create_session("System")
-        manager.save_message(session_id, "user", "HELLO World", update_title=True)
+        manager.save_message(session_id, "user", "HELLO World")
 
         # 使用小写搜索
         results = manager.search_sessions("hello")
@@ -204,7 +207,7 @@ class TestSessionManager:
     def test_search_sessions_no_results(self, manager):
         """测试搜索无结果"""
         session_id = manager.create_session("System")
-        manager.save_message(session_id, "user", "Test message", update_title=True)
+        manager.save_message(session_id, "user", "Test message")
 
         results = manager.search_sessions("nonexistent")
         assert results == []
@@ -231,7 +234,7 @@ class TestSessionManager:
     def test_session_data_structure(self, manager):
         """测试会话数据结构完整性"""
         session_id = manager.create_session("System prompt")
-        manager.save_message(session_id, "user", "User message", update_title=True)
+        manager.save_message(session_id, "user", "User message")
         manager.save_message(session_id, "assistant", "Assistant reply")
 
         session_data = manager.load_session(session_id)

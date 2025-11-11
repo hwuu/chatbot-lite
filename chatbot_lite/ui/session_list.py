@@ -27,10 +27,11 @@ class SessionList(Container):
 
     DEFAULT_CSS = """
     SessionList {
-        width: 30;
+        width: 50;
         height: 100%;
         border: solid $primary;
         padding: 1;
+        margin: 1;
     }
 
     SessionList.hidden {

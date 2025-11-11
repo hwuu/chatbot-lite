@@ -21,12 +21,12 @@ class InputBar(TextArea):
     支持：
     - 多行输入
     - Enter 换行
-    - Ctrl+D 发送消息
+    - Ctrl+Enter 发送消息
     - 高度自适应（5-25行）
     """
 
     BINDINGS = [
-        Binding("ctrl+d", "submit", "Send", show=True),
+        Binding("ctrl+j", "submit", "Send", show=True, priority=True),
     ]
 
     def __init__(self, **kwargs):
@@ -56,10 +56,8 @@ class InputBar(TextArea):
             self.styles.height = new_height
             self._last_height = new_height
 
-    def _on_key(self, event: events.Key) -> None:
-        """内部按键处理"""
-        # 先调用父类处理按键
-        super()._on_key(event)
+    def on_key(self, event: events.Key) -> None:
+        """按键事件处理"""
         # 按键后立即更新高度
         self._update_height()
 

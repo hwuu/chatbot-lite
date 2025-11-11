@@ -64,6 +64,10 @@ class StatusBar(Label):
 
         # 会话信息
         if self.current_session:
-            parts.append(f"Session: {self.current_session[:8]}...")
+            MAX_SHORT_NAME_LENGTH = 32
+            short_name = self.current_session
+            if len(short_name) > MAX_SHORT_NAME_LENGTH:
+                short_name = short_name[:MAX_SHORT_NAME_LENGTH - 3] + "..."
+            parts.append(f"Session: {short_name}")
 
         self.update(" | ".join(parts))

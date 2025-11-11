@@ -6,7 +6,7 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
-from textual.widgets import Footer, Header
+from textual.widgets import Footer
 
 from chatbot_lite.config import Config, load_config
 from chatbot_lite.context_manager import ContextManager
@@ -16,7 +16,6 @@ from chatbot_lite.ui.chat_view import ChatView
 from chatbot_lite.ui.input_bar import InputBar, MessageSubmitted
 from chatbot_lite.ui.search_screen import SearchScreen
 from chatbot_lite.ui.session_list import SessionList, SessionSelected
-from chatbot_lite.ui.status_bar import StatusBar
 from chatbot_lite.utils import count_tokens
 
 
@@ -30,6 +29,11 @@ class ChatbotApp(App):
 
     #main {
         height: 100%;
+        width: 100%;
+    }
+
+    #content {
+        height: 1fr;
         width: 100%;
     }
 
@@ -55,18 +59,9 @@ class ChatbotApp(App):
         margin: 1;
         padding: 1;
     }
-
-    #status_bar {
-        dock: bottom;
-        height: 1;
-        background: $boost;
-        color: $text;
-        padding: 0 1;
-    }
     """
 
     BINDINGS = [
-        Binding("ctrl+c", "quit_check", "Quit", show=False),
         Binding("ctrl+n", "new_session", "New Chat", show=True),
         Binding("ctrl+l", "toggle_sessions", "Sessions", show=True),
         Binding("ctrl+f", "search", "Search", show=True),
@@ -81,19 +76,16 @@ class ChatbotApp(App):
         self.session_manager: SessionManager = None
         self.context_manager: ContextManager = None
         self.current_session_id: str = None
-        self.last_ctrl_c_time: float = 0
         self.is_generating: bool = False
 
     def compose(self) -> ComposeResult:
         """组合 UI 组件"""
-        yield Header()
-        with Container(id="main"):
-            with Horizontal():
+        with Vertical(id="main"):
+            with Horizontal(id="content"):
                 yield SessionList(id="session_list")
                 with Vertical(id="chat_container"):
                     yield ChatView(id="chat_view")
                     yield InputBar(id="input_bar")
-        yield StatusBar(id="status_bar")
         yield Footer()
 
     async def on_mount(self):
@@ -101,6 +93,10 @@ class ChatbotApp(App):
         try:
             # 加载配置
             self.config = load_config()
+
+            # 更新 ChatView 的代码主题
+            chat_view = self.query_one("#chat_view", ChatView)
+            chat_view._code_theme = self.config.app.markdown_code_theme
 
             # 初始化组件
             self.llm_client = LLMClient(self.config.llm)
@@ -115,7 +111,7 @@ class ChatbotApp(App):
             # 显示欢迎消息
             chat_view = self.query_one("#chat_view", ChatView)
             chat_view.append_system_message(
-                "Welcome to Chatbot-Lite! Type your message and press Ctrl+D to send (Enter for new line)."
+                "Welcome to Chatbot-Lite! Type your message and press Ctrl+J to send (Enter for new line)."
             )
 
             # 聚焦到输入框
@@ -133,25 +129,10 @@ class ChatbotApp(App):
             chat_view.append_error_message(f"Initialization error: {e}")
             self.exit()
 
-    async def action_quit_check(self):
-        """双击 Ctrl-C 退出"""
-        now = time.time()
-        if now - self.last_ctrl_c_time < 1.0:
-            # 关闭 LLM 客户端
-            if self.llm_client:
-                await self.llm_client.close()
-            self.exit()
-        else:
-            self.last_ctrl_c_time = now
-            status_bar = self.query_one("#status_bar", StatusBar)
-            status_bar.set_status("Press Ctrl+C again to quit")
-
     async def action_cancel(self):
         """Esc 中断生成"""
         if self.is_generating:
             self.is_generating = False
-            status_bar = self.query_one("#status_bar", StatusBar)
-            status_bar.set_status("Generation cancelled")
 
     async def action_copy_last_message(self):
         """Ctrl+Y 复制最后一条助手消息"""
@@ -159,36 +140,30 @@ class ChatbotApp(App):
         last_message = chat_view.get_last_assistant_message()
 
         if not last_message:
-            status_bar = self.query_one("#status_bar", StatusBar)
-            status_bar.set_status("No message to copy")
             return
 
         try:
             import pyperclip
             pyperclip.copy(last_message)
-            status_bar = self.query_one("#status_bar", StatusBar)
-            status_bar.set_status("Message copied to clipboard")
         except ImportError:
-            status_bar = self.query_one("#status_bar", StatusBar)
-            status_bar.set_status("pyperclip not installed. Run: pip install pyperclip")
-        except Exception as e:
-            status_bar = self.query_one("#status_bar", StatusBar)
-            status_bar.set_status(f"Copy failed: {e}")
+            pass
+        except Exception:
+            pass
 
     async def action_new_session(self):
         """创建新会话"""
+        # 清理当前空 session
+        if self.current_session_id and self.session_manager.is_session_empty(self.current_session_id):
+            try:
+                self.session_manager.delete_session(self.current_session_id)
+            except FileNotFoundError:
+                pass
+
+        # 创建新 session，但不立即保存到磁盘
         self.current_session_id = self.session_manager.create_session(
-            self.config.llm.system_prompt
+            self.config.llm.system_prompt, save_to_disk=False
         )
         self.context_manager.reset_compression()
-
-        # 更新状态栏
-        session = self.session_manager.load_session(self.current_session_id)
-        status_bar = self.query_one("#status_bar", StatusBar)
-        status_bar.update_session(
-            self.current_session_id, session["title"], session["total_tokens"]
-        )
-        status_bar.set_status("New session created")
 
         # 更新会话列表
         self._refresh_session_list()
@@ -217,6 +192,22 @@ class ChatbotApp(App):
         session_list = self.query_one("#session_list", SessionList)
         session_list.update_sessions(sessions)
 
+    async def _generate_title(self, user_message: str):
+        """
+        异步生成会话标题
+
+        Args:
+            user_message: 用户的第一条消息
+        """
+        try:
+            title = await self.llm_client.generate_title(user_message)
+            self.session_manager.update_title(self.current_session_id, title)
+            # 更新会话列表
+            self._refresh_session_list()
+        except Exception:
+            # 如果生成失败，静默忽略，保持默认标题
+            pass
+
     async def _load_session(self, session_id: str):
         """
         加载指定会话
@@ -225,6 +216,13 @@ class ChatbotApp(App):
             session_id: 会话 ID
         """
         try:
+            # 清理当前空 session
+            if self.current_session_id and self.session_manager.is_session_empty(self.current_session_id):
+                try:
+                    self.session_manager.delete_session(self.current_session_id)
+                except FileNotFoundError:
+                    pass
+
             # 加载会话
             session = self.session_manager.load_session(session_id)
             self.current_session_id = session_id
@@ -245,13 +243,6 @@ class ChatbotApp(App):
                     chat_view.append_assistant_chunk(msg["content"])
                     chat_view.finalize_assistant_message()
 
-            # 更新状态栏
-            status_bar = self.query_one("#status_bar", StatusBar)
-            status_bar.update_session(
-                session_id, session["title"], session["total_tokens"]
-            )
-            status_bar.set_status(f"Loaded session: {session['title']}")
-
         except Exception as e:
             chat_view = self.query_one("#chat_view", ChatView)
             chat_view.append_error_message(f"Failed to load session: {e}")
@@ -265,8 +256,6 @@ class ChatbotApp(App):
     async def handle_message_submitted(self, message: MessageSubmitted):
         """处理用户提交的消息"""
         if self.is_generating:
-            status_bar = self.query_one("#status_bar", StatusBar)
-            status_bar.set_status("Please wait for the current response to complete")
             return
 
         user_message = message.content
@@ -275,16 +264,22 @@ class ChatbotApp(App):
         chat_view = self.query_one("#chat_view", ChatView)
         chat_view.append_user_message(user_message)
 
+        # 检查是否是第一条用户消息（用于生成标题）
+        session = self.session_manager.load_session(self.current_session_id)
+        is_first_user_message = len([m for m in session["messages"] if m["role"] == "user"]) == 0
+
         # 保存用户消息
         user_tokens = count_tokens(user_message)
         self.session_manager.save_message(
-            self.current_session_id, "user", user_message, update_title=True
+            self.current_session_id, "user", user_message
         )
+
+        # 如果是第一条用户消息，异步生成标题
+        if is_first_user_message:
+            self.run_worker(self._generate_title(user_message), exclusive=False)
 
         # 更新状态
         self.is_generating = True
-        status_bar = self.query_one("#status_bar", StatusBar)
-        status_bar.set_status("Generating...")
 
         # 开始接收助手回复
         chat_view.append_assistant_message_start()
@@ -320,21 +315,9 @@ class ChatbotApp(App):
                     self.current_session_id, "assistant", full_response
                 )
 
-                # 更新状态栏
-                session = self.session_manager.load_session(self.current_session_id)
-                status_bar.update_session(
-                    self.current_session_id,
-                    session["title"],
-                    session["total_tokens"],
-                )
-                status_bar.set_status("Ready")
-            else:
-                status_bar.set_status("Cancelled")
-
         except Exception as e:
             # 错误处理
             chat_view.append_error_message(str(e))
-            status_bar.set_status("Error")
 
         finally:
             self.is_generating = False

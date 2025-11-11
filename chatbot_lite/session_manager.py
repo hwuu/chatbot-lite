@@ -23,13 +23,16 @@ class SessionManager:
         """
         self.history_dir = Path(history_dir)
         self.history_dir.mkdir(parents=True, exist_ok=True)
+        # 内存中的 session 缓存（用于延迟保存）
+        self._memory_sessions: Dict[str, Dict] = {}
 
-    def create_session(self, system_prompt: str) -> str:
+    def create_session(self, system_prompt: str, save_to_disk: bool = True) -> str:
         """
         创建新会话
 
         Args:
             system_prompt: 系统提示词
+            save_to_disk: 是否立即保存到磁盘，False 则只保存在内存中
 
         Returns:
             session_id: 新创建的会话 ID
@@ -54,8 +57,12 @@ class SessionManager:
             "total_tokens": count_tokens(system_prompt),
         }
 
-        # 保存到文件
-        self._save_session(session_id, session_data)
+        if save_to_disk:
+            # 保存到文件
+            self._save_session(session_id, session_data)
+        else:
+            # 只保存在内存中
+            self._memory_sessions[session_id] = session_data
 
         return session_id
 
@@ -72,6 +79,11 @@ class SessionManager:
         Raises:
             FileNotFoundError: 会话不存在
         """
+        # 先检查内存缓存
+        if session_id in self._memory_sessions:
+            return self._memory_sessions[session_id]
+
+        # 再检查文件
         session_path = self.history_dir / f"session_{session_id}.json"
 
         if not session_path.exists():
@@ -171,7 +183,7 @@ class SessionManager:
         return results
 
     def save_message(
-        self, session_id: str, role: str, content: str, update_title: bool = False
+        self, session_id: str, role: str, content: str
     ):
         """
         追加消息到会话
@@ -180,7 +192,6 @@ class SessionManager:
             session_id: 会话 ID
             role: 消息角色（user 或 assistant）
             content: 消息内容
-            update_title: 是否更新会话标题（首次用户消息时为 True）
 
         Raises:
             FileNotFoundError: 会话不存在
@@ -204,10 +215,9 @@ class SessionManager:
         # 更新时间戳
         session_data["updated_at"] = datetime.now().isoformat()
 
-        # 更新标题（如果需要且当前是默认标题）
-        if update_title and session_data["title"] == "New Chat" and role == "user":
-            # 取用户消息的前 30 个字符作为标题
-            session_data["title"] = truncate_text(content, 30, suffix="...")
+        # 如果 session 在内存中，移除内存缓存（即将保存到磁盘）
+        if session_id in self._memory_sessions:
+            del self._memory_sessions[session_id]
 
         # 保存
         self._save_session(session_id, session_data)
@@ -222,12 +232,54 @@ class SessionManager:
         Raises:
             FileNotFoundError: 会话不存在
         """
+        # 从内存中删除
+        if session_id in self._memory_sessions:
+            del self._memory_sessions[session_id]
+            return
+
+        # 从文件中删除
         session_path = self.history_dir / f"session_{session_id}.json"
 
         if not session_path.exists():
             raise FileNotFoundError(f"会话不存在: {session_id}")
 
         session_path.unlink()
+
+    def is_session_empty(self, session_id: str) -> bool:
+        """
+        检查会话是否为空（只有 system prompt，没有用户消息）
+
+        Args:
+            session_id: 会话 ID
+
+        Returns:
+            True 如果会话为空，False 否则
+        """
+        try:
+            session = self.load_session(session_id)
+            # 只有 system prompt 的 session 被认为是空的
+            return len(session["messages"]) == 1 and session["messages"][0]["role"] == "system"
+        except FileNotFoundError:
+            return True
+
+    def update_title(self, session_id: str, title: str):
+        """
+        更新会话标题
+
+        Args:
+            session_id: 会话 ID
+            title: 新标题
+        """
+        session_data = self.load_session(session_id)
+        session_data["title"] = title
+        session_data["updated_at"] = datetime.now().isoformat()
+
+        # 如果 session 在内存中，更新内存缓存
+        if session_id in self._memory_sessions:
+            self._memory_sessions[session_id] = session_data
+        else:
+            # 保存到磁盘
+            self._save_session(session_id, session_data)
 
     def _save_session(self, session_id: str, session_data: Dict):
         """

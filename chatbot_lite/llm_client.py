@@ -62,6 +62,9 @@ class LLMClient:
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
+                    # 如果是第一个 chunk，去除前导空格
+                    if not full_response:
+                        content = content.lstrip()
                     full_response += content
                     await on_chunk(content)
 
@@ -99,3 +102,49 @@ class LLMClient:
 
         except Exception as e:
             raise Exception(f"LLM API 调用失败: {e}")
+
+    async def generate_title(self, user_message: str) -> str:
+        """
+        根据用户的第一条消息生成会话标题
+
+        Args:
+            user_message: 用户的第一条消息
+
+        Returns:
+            生成的标题（10个字以内）
+
+        Raises:
+            Exception: API 调用错误
+        """
+        try:
+            messages = [
+                {
+                    "role": "system",
+                    "content": "你是一个标题生成助手。根据用户的提问，生成一个简洁的主题标题，要求：1）20个字以内 2）尽量简短 3）只输出标题，不要其他内容"
+                },
+                {
+                    "role": "user",
+                    "content": f"请为以下提问生成一个简短的标题：\n\n{user_message}"
+                }
+            ]
+
+            response = await self.client.chat.completions.create(
+                model=self.config.model,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=50,
+                stream=False,
+            )
+
+            title = response.choices[0].message.content.strip()
+            # 移除可能的引号
+            title = title.strip('"').strip("'")
+            # 限制长度
+            if len(title) > 30:
+                title = title[:30]
+
+            return title
+
+        except Exception as e:
+            # 如果生成失败，返回截取的用户消息
+            return user_message[:30] if len(user_message) > 30 else user_message

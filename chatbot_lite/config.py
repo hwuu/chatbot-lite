@@ -36,6 +36,9 @@ class AppConfig(BaseModel):
     compress_summary_tokens: int = Field(
         default=300, gt=0, description="压缩后摘要的目标长度"
     )
+    markdown_code_theme: str = Field(
+        default="monokai", description="Markdown 代码块主题"
+    )
 
     @field_validator("context_strategy")
     @classmethod
@@ -44,6 +47,24 @@ class AppConfig(BaseModel):
         allowed = ["lazy_compress", "sliding_window"]
         if v not in allowed:
             raise ValueError(f"context_strategy 必须是 {allowed} 之一")
+        return v
+
+    @field_validator("markdown_code_theme")
+    @classmethod
+    def validate_code_theme(cls, v: str) -> str:
+        """验证 Markdown 代码主题"""
+        # 获取所有可用主题
+        try:
+            from pygments.styles import get_all_styles
+            available_themes = list(get_all_styles())
+            if v not in available_themes:
+                raise ValueError(
+                    f"markdown_code_theme '{v}' 不是有效的主题。"
+                    f"可用主题: {', '.join(sorted(available_themes))}"
+                )
+        except ImportError:
+            # 如果 pygments 未安装，跳过验证
+            pass
         return v
 
 
