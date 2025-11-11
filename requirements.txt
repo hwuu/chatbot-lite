@@ -1,0 +1,22 @@
+# Chatbot-Lite 依赖
+
+# UI 框架
+textual>=0.47.0
+rich>=13.0.0
+
+# LLM 客户端
+openai>=1.0.0
+
+# 配置管理
+pydantic>=2.0.0
+PyYAML>=6.0
+
+# 语言检测
+langdetect>=1.0.9
+
+# 剪贴板支持
+pyperclip>=1.8.2
+
+# 测试
+pytest>=7.0.0
+pytest-asyncio>=0.21.0

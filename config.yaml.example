@@ -1,0 +1,15 @@
+# LLM 配置
+llm:
+  api_base: "http://localhost:11434/v1"  # Ollama 本地地址
+  model: "qwen2.5-coder:7b"              # 模型名称
+  api_key: "ollama"                      # 本地模型通常不验证，保留字段
+  temperature: 0.7                       # 生成温度
+  max_tokens: 2000                       # 最大 token 数
+  system_prompt: "You are a helpful AI assistant."  # 系统提示词
+
+# 应用配置
+app:
+  history_dir: "~/.chatbot-lite"         # 对话历史存储目录
+  context_strategy: "lazy_compress"      # 上下文管理策略
+  compress_threshold: 0.85               # Token 达到 85% 时触发压缩
+  compress_summary_tokens: 300           # 压缩后摘要的目标长度
