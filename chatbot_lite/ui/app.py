@@ -110,8 +110,17 @@ class ChatbotApp(App):
 
             # 显示欢迎消息
             chat_view = self.query_one("#chat_view", ChatView)
+            welcome_banner = r"""
+  _____ _           _   _           _           _      _ _
+ / ____| |         | | | |         | |         | |    (_) |
+| |    | |__   __ _| |_| |__   ___ | |_ ______ | |     _| |_ ___
+| |    | '_ \ / _` | __| '_ \ / _ \| __|______|| |    | | __/ _ \
+| |____| | | | (_| | |_| |_) | (_) | |_        | |____| | ||  __/
+ \_____|_| |_|\__,_|\__|_.__/ \___/ \__|       |______|_|\__\___|
+
+            """
             chat_view.append_system_message(
-                "Welcome to Chatbot-Lite! Type your message and press Ctrl+J to send (Enter for new line)."
+                welcome_banner + "\nType your message and press Ctrl+J to send (Enter for new line)."
             )
 
             # 聚焦到输入框
