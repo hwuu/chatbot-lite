@@ -215,7 +215,7 @@ class LLMClient:
                 },
                 {
                     "role": "user",
-                    "content": f"请为以下提问生成一个简短的标题：\n\n{user_message}"
+                    "content": f"请为以下提问所引发的可能的对话生成一个简短的标题：\n\n{user_message}"
                 }
             ]
 
