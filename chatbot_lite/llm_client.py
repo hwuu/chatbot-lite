@@ -4,11 +4,14 @@
 """
 
 import re
+import time
 from typing import Callable, Dict, List, Awaitable
 
 from openai import AsyncOpenAI
 
 from chatbot_lite.config import LLMConfig
+from chatbot_lite.logger import get_logger
+from chatbot_lite.utils import count_tokens
 
 
 class ThinkTagFilter:
@@ -90,10 +93,12 @@ class LLMClient:
             config: LLM 配置对象
         """
         self.config = config
+        self.logger = get_logger(__name__)
         self.client = AsyncOpenAI(
             api_key=config.api_key,
             base_url=config.api_base,
         )
+        self.logger.info(f"LLM 客户端初始化: 模型={config.model}, API地址={config.api_base}")
 
     async def close(self):
         """关闭客户端连接"""
@@ -117,6 +122,11 @@ class LLMClient:
         Raises:
             Exception: API 调用错误
         """
+        # 计算输入 token 数
+        input_tokens = sum(count_tokens(msg["content"]) for msg in messages)
+        self.logger.info(f"开始流式 LLM 调用: 消息数={len(messages)}, 输入tokens={input_tokens}")
+
+        start_time = time.time()
         full_response = ""
         think_filter = ThinkTagFilter()
 
@@ -152,7 +162,20 @@ class LLMClient:
                 full_response += remaining
                 await on_chunk(remaining)
 
+            # 计算输出 token 数和响应时间
+            output_tokens = count_tokens(full_response)
+            elapsed_time = time.time() - start_time
+            self.logger.info(
+                f"流式 LLM 调用成功: 输出tokens={output_tokens}, "
+                f"响应时间={elapsed_time:.2f}s"
+            )
+
         except Exception as e:
+            elapsed_time = time.time() - start_time
+            self.logger.error(
+                f"流式 LLM 调用失败: {e}, 耗时={elapsed_time:.2f}s",
+                exc_info=True
+            )
             raise Exception(f"LLM API 调用失败: {e}")
 
         return full_response
@@ -173,6 +196,12 @@ class LLMClient:
         Raises:
             Exception: API 调用错误
         """
+        # 计算输入 token 数
+        input_tokens = sum(count_tokens(msg["content"]) for msg in messages)
+        self.logger.info(f"开始非流式 LLM 调用: 消息数={len(messages)}, 输入tokens={input_tokens}")
+
+        start_time = time.time()
+
         try:
             response = await self.client.chat.completions.create(
                 model=self.config.model,
@@ -189,9 +218,22 @@ class LLMClient:
             filtered_content = think_filter.process_chunk(content)
             filtered_content += think_filter.finalize()
 
+            # 计算输出 token 数和响应时间
+            output_tokens = count_tokens(filtered_content)
+            elapsed_time = time.time() - start_time
+            self.logger.info(
+                f"非流式 LLM 调用成功: 输出tokens={output_tokens}, "
+                f"响应时间={elapsed_time:.2f}s"
+            )
+
             return filtered_content.strip()
 
         except Exception as e:
+            elapsed_time = time.time() - start_time
+            self.logger.error(
+                f"非流式 LLM 调用失败: {e}, 耗时={elapsed_time:.2f}s",
+                exc_info=True
+            )
             raise Exception(f"LLM API 调用失败: {e}")
 
     async def generate_title(self, user_message: str) -> str:
@@ -207,6 +249,9 @@ class LLMClient:
         Raises:
             Exception: API 调用错误
         """
+        self.logger.info("开始生成会话标题")
+        start_time = time.time()
+
         try:
             messages = [
                 {
@@ -242,8 +287,15 @@ class LLMClient:
             if len(title) > 30:
                 title = title[:30]
 
+            elapsed_time = time.time() - start_time
+            self.logger.info(f"会话标题生成成功: '{title}', 响应时间={elapsed_time:.2f}s")
+
             return title
 
         except Exception as e:
+            elapsed_time = time.time() - start_time
+            self.logger.warning(
+                f"会话标题生成失败: {e}, 耗时={elapsed_time:.2f}s, 使用默认标题"
+            )
             # 如果生成失败，返回截取的用户消息
             return user_message[:30] if len(user_message) > 30 else user_message

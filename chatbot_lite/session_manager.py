@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from chatbot_lite.logger import get_logger
 from chatbot_lite.utils import count_tokens, truncate_text
 
 
@@ -23,8 +24,10 @@ class SessionManager:
         """
         self.history_dir = Path(history_dir)
         self.history_dir.mkdir(parents=True, exist_ok=True)
+        self.logger = get_logger(__name__)
         # 内存中的 session 缓存（用于延迟保存）
         self._memory_sessions: Dict[str, Dict] = {}
+        self.logger.info(f"会话管理器初始化: 历史目录={self.history_dir}")
 
     def create_session(self, system_prompt: str, save_to_disk: bool = True) -> str:
         """
@@ -60,9 +63,11 @@ class SessionManager:
         if save_to_disk:
             # 保存到文件
             self._save_session(session_id, session_data)
+            self.logger.info(f"创建新会话（已保存）: session_id={session_id}")
         else:
             # 只保存在内存中
             self._memory_sessions[session_id] = session_data
+            self.logger.info(f"创建新会话（内存）: session_id={session_id}")
 
         return session_id
 
@@ -81,16 +86,20 @@ class SessionManager:
         """
         # 先检查内存缓存
         if session_id in self._memory_sessions:
+            self.logger.info(f"从内存加载会话: session_id={session_id}")
             return self._memory_sessions[session_id]
 
         # 再检查文件
         session_path = self.history_dir / f"session_{session_id}.json"
 
         if not session_path.exists():
+            self.logger.warning(f"会话不存在: session_id={session_id}")
             raise FileNotFoundError(f"会话不存在: {session_id}")
 
         with open(session_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            session_data = json.load(f)
+            self.logger.info(f"从文件加载会话: session_id={session_id}")
+            return session_data
 
     def list_sessions(self, limit: Optional[int] = None) -> List[Dict]:
         """
@@ -235,15 +244,18 @@ class SessionManager:
         # 从内存中删除
         if session_id in self._memory_sessions:
             del self._memory_sessions[session_id]
+            self.logger.info(f"删除会话（内存）: session_id={session_id}")
             return
 
         # 从文件中删除
         session_path = self.history_dir / f"session_{session_id}.json"
 
         if not session_path.exists():
+            self.logger.warning(f"尝试删除不存在的会话: session_id={session_id}")
             raise FileNotFoundError(f"会话不存在: {session_id}")
 
         session_path.unlink()
+        self.logger.info(f"删除会话（文件）: session_id={session_id}")
 
     def is_session_empty(self, session_id: str) -> bool:
         """

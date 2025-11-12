@@ -11,6 +11,7 @@ from textual.widgets import Footer
 from chatbot_lite.config import Config, load_config
 from chatbot_lite.context_manager import ContextManager
 from chatbot_lite.llm_client import LLMClient
+from chatbot_lite.logger import get_logger, setup_logger
 from chatbot_lite.session_manager import SessionManager
 from chatbot_lite.ui.chat_view import ChatView
 from chatbot_lite.ui.input_bar import InputBar, MessageSubmitted
@@ -84,6 +85,11 @@ class ChatbotApp(App):
 
     def __init__(self):
         super().__init__()
+        # 初始化日志系统
+        setup_logger()
+        self.logger = get_logger(__name__)
+        self.logger.info("应用初始化")
+
         self.config: Config = None
         self.llm_client: LLMClient = None
         self.session_manager: SessionManager = None
@@ -105,8 +111,11 @@ class ChatbotApp(App):
     async def on_mount(self):
         """应用挂载时初始化"""
         try:
+            self.logger.info("应用开始挂载")
+
             # 加载配置
             self.config = load_config()
+            self.logger.info(f"配置加载成功: UI主题={self.config.app.ui_theme}, 模型={self.config.llm.model}")
 
             # 设置 UI 主题
             self.theme = self.config.app.ui_theme
@@ -121,6 +130,7 @@ class ChatbotApp(App):
             self.context_manager = ContextManager(
                 self.config.app, self.llm_client
             )
+            self.logger.info("核心组件初始化完成")
 
             # 创建新会话
             await self.action_new_session()
@@ -144,13 +154,17 @@ class ChatbotApp(App):
             input_bar = self.query_one("#input_bar", InputBar)
             input_bar.focus()
 
+            self.logger.info("应用启动完成")
+
         except FileNotFoundError as e:
             # 配置文件不存在
+            self.logger.error(f"配置文件未找到: {e}")
             chat_view = self.query_one("#chat_view", ChatView)
             chat_view.append_error_message(str(e))
             self.exit()
         except Exception as e:
             # 其他初始化错误
+            self.logger.error(f"应用初始化失败: {e}", exc_info=True)
             chat_view = self.query_one("#chat_view", ChatView)
             chat_view.append_error_message(f"Initialization error: {e}")
             self.exit()

@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 
 from chatbot_lite.config import AppConfig
 from chatbot_lite.llm_client import LLMClient
+from chatbot_lite.logger import get_logger
 
 
 class ContextManager:
@@ -30,8 +31,10 @@ class ContextManager:
         """
         self.config = config
         self.llm_client = llm_client
+        self.logger = get_logger(__name__)
         self._compressed_summary: Optional[str] = None  # 缓存压缩后的摘要
         self._recent_message_count = 10  # 保留最近 N 条消息
+        self.logger.info(f"上下文管理器初始化: 策略={config.context_strategy}, 阈值={config.compress_threshold}")
 
     async def get_context_messages(
         self, session: Dict, current_input_tokens: int
@@ -54,6 +57,10 @@ class ContextManager:
 
         # 情况 1：未超过阈值，返回全部消息
         if total_tokens < threshold:
+            self.logger.info(
+                f"上下文未超阈值: total_tokens={total_tokens}, "
+                f"threshold={threshold}, 返回全部 {len(messages)} 条消息"
+            )
             return messages
 
         # 情况 2：需要压缩
@@ -62,6 +69,10 @@ class ContextManager:
 
         # 如果历史消息少于保留数量，直接返回
         if len(history) <= self._recent_message_count:
+            self.logger.info(
+                f"历史消息数量 {len(history)} <= 保留数量 {self._recent_message_count}, "
+                f"无需压缩"
+            )
             return messages
 
         # 分割历史：旧消息 + 最近消息
@@ -70,7 +81,15 @@ class ContextManager:
 
         # 如果还没有压缩过，执行压缩
         if self._compressed_summary is None and old_msgs:
+            self.logger.info(
+                f"触发上下文压缩: 压缩 {len(old_msgs)} 条旧消息, "
+                f"保留 {len(recent_msgs)} 条最近消息"
+            )
             self._compressed_summary = await self._compress_messages(old_msgs)
+        else:
+            self.logger.info(
+                f"使用已缓存的压缩摘要, 保留 {len(recent_msgs)} 条最近消息"
+            )
 
         # 组合最终上下文
         result = [system_msg]
@@ -99,6 +118,8 @@ class ContextManager:
         Returns:
             压缩后的摘要文本
         """
+        self.logger.info(f"开始压缩消息: 消息数={len(messages)}")
+
         # 构造对话文本
         conversation_text = "\n\n".join(
             [f"{msg['role']}: {msg['content']}" for msg in messages]
@@ -122,10 +143,12 @@ Summary:""",
         # 调用 LLM 生成摘要（使用非流式接口）
         try:
             summary = await self.llm_client.chat(compress_prompt)
+            self.logger.info(f"压缩成功: 摘要长度={len(summary)} 字符")
             return summary.strip()
         except Exception as e:
             # 如果压缩失败，返回简单的截断摘要
             # 这样即使 LLM 不可用，系统仍可继续运行
+            self.logger.warning(f"压缩失败，使用降级策略: {e}")
             fallback_summary = conversation_text[: self.config.compress_summary_tokens * 4]
             return f"[Compression failed, showing truncated history]\n{fallback_summary}"
 
