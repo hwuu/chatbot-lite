@@ -63,6 +63,7 @@ class ChatbotApp(App):
     #chat_view .copy-button {
         width: auto;
         min-width: 10;
+        padding: 0 2;
     }
 
     #input_bar {
