@@ -157,16 +157,24 @@ class ChatView(VerticalScroll):
     def on_copy_button_pressed(self, event: Button.Pressed):
         """处理复制按钮点击事件"""
         if isinstance(event.button, CopyButton):
+            success = False
             try:
                 # 尝试使用 app 的 clipboard 功能
                 self.app.copy_to_clipboard(event.button.message_content)
+                success = True
             except Exception:
                 # 如果失败，尝试使用 pyperclip
                 try:
                     import pyperclip
                     pyperclip.copy(event.button.message_content)
+                    success = True
                 except Exception:
                     pass
+
+            # 如果复制成功，显示通知
+            if success:
+                char_count = len(event.button.message_content)
+                self.app.notify(f"{char_count} 字符已复制到剪贴板", timeout=5.0)
 
             # 复制完成后，将焦点返回到输入框
             try:
