@@ -165,8 +165,8 @@ class ChatView(VerticalScroll):
         self._blink_phase = (self._blink_phase + 0.05) % 1.0
 
         # 计算透明度（通过 cos 函数实现平滑过渡）
-        # 范围：0.5 到 1.0
-        opacity = 0.75 + 0.25 * math.cos(self._blink_phase * 2 * math.pi)
+        # 范围：0.3 到 1.0
+        opacity = 0.65 + 0.35 * math.cos(self._blink_phase * 2 * math.pi)
 
         # 通过调整绿色的亮度来模拟透明度
         # bold green 对应 RGB(0, 255, 0)

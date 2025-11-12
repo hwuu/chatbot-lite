@@ -115,10 +115,34 @@ class TestAppConfig:
 class TestLoadConfig:
     """测试 load_config 函数"""
 
-    def test_file_not_found(self):
-        """测试配置文件不存在"""
-        with pytest.raises(FileNotFoundError, match="配置文件不存在"):
-            load_config("non_existent_config.yaml")
+    def test_auto_create_default_config(self, tmp_path, capsys):
+        """测试配置文件不存在时自动创建默认配置"""
+        config_file = tmp_path / "auto_generated_config.yaml"
+
+        # 确保文件不存在
+        assert not config_file.exists()
+
+        # 加载配置（应该自动创建）
+        config = load_config(str(config_file))
+
+        # 验证文件已创建
+        assert config_file.exists()
+
+        # 验证配置包含所有必需字段（使用默认值）
+        assert config.llm.api_base == "http://localhost:11434/v1"
+        assert config.llm.model == "qwen2.5:7b"
+        assert config.llm.api_key == "ollama"
+        assert config.llm.temperature == 0.7
+        assert config.llm.max_tokens == 2000
+        assert config.app.context_strategy == "lazy_compress"
+        assert config.app.compress_threshold == 0.85
+        assert config.app.compress_summary_tokens == 300
+        assert config.app.markdown_code_theme == "monokai"
+
+        # 验证输出了提示信息
+        captured = capsys.readouterr()
+        assert "首次运行" in captured.out
+        assert "已创建默认配置文件" in captured.out
 
     def test_load_valid_config(self, tmp_path):
         """测试加载有效配置"""

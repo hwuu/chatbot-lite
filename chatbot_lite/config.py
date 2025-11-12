@@ -3,6 +3,7 @@
 负责加载和验证 config.yaml 配置文件。
 """
 
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -75,27 +76,87 @@ class Config(BaseModel):
     app: AppConfig
 
 
-def load_config(config_path: str = "config.yaml") -> Config:
+# 默认配置模板
+DEFAULT_CONFIG_TEMPLATE = """# Chatbot-Lite 配置文件
+# 首次运行自动生成，请根据需要修改
+
+llm:
+  api_base: "http://localhost:11434/v1"    # Ollama API 地址
+  model: "qwen2.5:7b"                       # 模型名称
+  api_key: "ollama"                         # API 密钥（Ollama 默认为 "ollama"）
+  temperature: 0.7                          # 生成温度（0.0-2.0）
+  max_tokens: 2000                          # 最大 token 数
+  system_prompt: "You are a helpful AI assistant."  # 系统提示词
+
+app:
+  history_dir: "~/.chatbot-lite/history"    # 对话历史存储目录
+  context_strategy: "lazy_compress"         # 上下文管理策略
+  compress_threshold: 0.85                  # Token 达到 85% 时触发压缩
+  compress_summary_tokens: 300              # 压缩后摘要的目标长度
+  markdown_code_theme: "monokai"            # Markdown 代码块主题
+"""
+
+
+def get_default_config_path() -> Path:
+    """
+    获取默认配置文件路径
+
+    Returns:
+        Path: ~/.chatbot-lite/config.yaml
+    """
+    return Path.home() / ".chatbot-lite" / "config.yaml"
+
+
+def create_default_config(config_path: Optional[Path] = None) -> Path:
+    """
+    创建默认配置文件
+
+    Args:
+        config_path: 配置文件路径，默认为 ~/.chatbot-lite/config.yaml
+
+    Returns:
+        Path: 创建的配置文件路径
+    """
+    if config_path is None:
+        config_path = get_default_config_path()
+
+    # 创建目录
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # 写入默认配置
+    with open(config_path, "w", encoding="utf-8") as f:
+        f.write(DEFAULT_CONFIG_TEMPLATE)
+
+    return config_path
+
+
+def load_config(config_path: Optional[str] = None) -> Config:
     """
     加载配置文件
 
+    首次运行时会自动创建默认配置文件到 ~/.chatbot-lite/config.yaml
+
     Args:
-        config_path: 配置文件路径，默认为 config.yaml
+        config_path: 配置文件路径，默认为 ~/.chatbot-lite/config.yaml
 
     Returns:
         Config: 配置对象
 
     Raises:
-        FileNotFoundError: 配置文件不存在
         ValueError: 配置验证失败
     """
-    path = Path(config_path)
+    # 确定配置文件路径
+    if config_path is None:
+        path = get_default_config_path()
+    else:
+        path = Path(config_path)
 
+    # 如果配置文件不存在，创建默认配置
     if not path.exists():
-        raise FileNotFoundError(
-            f"配置文件不存在: {path.absolute()}\n"
-            f"请复制 config.yaml.example 并重命名为 config.yaml"
-        )
+        # 首次运行，创建默认配置
+        path = create_default_config(path)
+        print(f"首次运行，已创建默认配置文件: {path}")
+        print("请编辑配置文件以设置您的 LLM API 信息")
 
     with open(path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
