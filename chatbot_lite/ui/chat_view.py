@@ -4,8 +4,17 @@ import math
 
 from rich.markdown import Markdown
 from rich.text import Text
-from textual.containers import VerticalScroll
-from textual.widgets import Label, RichLog, Static
+from textual import on
+from textual.containers import Horizontal, VerticalScroll
+from textual.widgets import Button, Static
+
+
+class CopyButton(Button):
+    """带有消息内容的复制按钮"""
+
+    def __init__(self, message_content: str, **kwargs):
+        super().__init__("📋 复制", **kwargs)
+        self.message_content = message_content
 
 
 class ChatView(VerticalScroll):
@@ -38,11 +47,11 @@ class ChatView(VerticalScroll):
         label = Static(Text("\n● You\n", style="bold cyan"))
         self.mount(label)
         # 添加消息内容（可选择，缩进两个空格，使用配置的代码主题，左对齐）
-        content_widget = Label(
-            Markdown(content, code_theme=self._code_theme, justify="left"),
+        content_widget = Static(
+            Text(content),
+            #Markdown(content, code_theme=self._code_theme, justify="left"),
             classes="message-content"
         )
-        content_widget.can_focus = False  # 不获取焦点，但可以选择文本
         self.mount(content_widget)
         # 自动滚动到底部
         self.scroll_end(animate=False)
@@ -93,12 +102,20 @@ class ChatView(VerticalScroll):
 
         # 添加最终的 Markdown 渲染版本（可选择，缩进两个空格，使用配置的代码主题，左对齐）
         if self._current_assistant_message:
-            content_widget = Label(
+            content_widget = Static(
                 Markdown(self._current_assistant_message, code_theme=self._code_theme, justify="left"),
                 classes="message-content"
             )
-            content_widget.can_focus = False  # 不获取焦点，但可以选择文本
             self.mount(content_widget)
+
+            # 添加复制按钮
+            copy_button = CopyButton(
+                self._current_assistant_message,
+                variant="default",
+                classes="copy-button"
+            )
+            button_container = Horizontal(copy_button, classes="copy-button-container")
+            self.mount(button_container)
 
         ## 添加分割线
         #separator = Static(Text("─" * 80, style="dim"))
@@ -135,6 +152,21 @@ class ChatView(VerticalScroll):
         """
         widget = Static(Text(f"Error: {error}", style="bold red"))
         self.mount(widget)
+
+    @on(Button.Pressed, ".copy-button")
+    def on_copy_button_pressed(self, event: Button.Pressed):
+        """处理复制按钮点击事件"""
+        if isinstance(event.button, CopyButton):
+            try:
+                # 尝试使用 app 的 clipboard 功能
+                self.app.copy_to_clipboard(event.button.message_content)
+            except Exception:
+                # 如果失败，尝试使用 pyperclip
+                try:
+                    import pyperclip
+                    pyperclip.copy(event.button.message_content)
+                except Exception:
+                    pass
 
     def clear_chat(self):
         """清空聊天记录"""

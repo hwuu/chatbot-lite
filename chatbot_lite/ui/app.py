@@ -53,6 +53,18 @@ class ChatbotApp(App):
         margin-left: 2;
     }
 
+    #chat_view .copy-button-container {
+        height: auto;
+        margin-left: 2;
+        margin-top: 1;
+        margin-bottom: 1;
+    }
+
+    #chat_view .copy-button {
+        width: auto;
+        min-width: 10;
+    }
+
     #input_bar {
         height: auto;
         border: solid $accent;
