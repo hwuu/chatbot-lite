@@ -3,11 +3,80 @@
 负责与本地 LLM API 进行流式通信。
 """
 
+import re
 from typing import Callable, Dict, List, Awaitable
 
 from openai import AsyncOpenAI
 
 from chatbot_lite.config import LLMConfig
+
+
+class ThinkTagFilter:
+    """过滤 <think>...</think> 标签的状态机"""
+
+    def __init__(self):
+        self.buffer = ""
+        self.in_think = False
+        self.output_buffer = ""
+
+    def process_chunk(self, chunk: str) -> str:
+        """
+        处理流式输入的文本块，过滤掉 <think>...</think> 标签
+
+        Args:
+            chunk: 输入的文本块
+
+        Returns:
+            过滤后可以输出的文本
+        """
+        self.buffer += chunk
+        output = ""
+
+        while self.buffer:
+            if not self.in_think:
+                # 查找 <think> 标签
+                think_start = self.buffer.find("<think>")
+                if think_start != -1:
+                    # 输出标签之前的内容
+                    output += self.buffer[:think_start]
+                    self.buffer = self.buffer[think_start + 7:]  # 跳过 <think>
+                    self.in_think = True
+                else:
+                    # 检查 buffer 末尾是否可能是不完整的标签
+                    # 保留最后 6 个字符以防是 "<think" 的一部分
+                    if len(self.buffer) > 6:
+                        safe_len = len(self.buffer) - 6
+                        output += self.buffer[:safe_len]
+                        self.buffer = self.buffer[safe_len:]
+                    break
+            else:
+                # 在 think 标签内，查找 </think> 标签
+                think_end = self.buffer.find("</think>")
+                if think_end != -1:
+                    # 丢弃标签内的内容，跳过 </think>
+                    self.buffer = self.buffer[think_end + 8:]
+                    self.in_think = False
+                else:
+                    # 保留最后 7 个字符以防是不完整的 "</think" 的一部分
+                    if len(self.buffer) > 8:
+                        # 丢弃 think 标签内的内容
+                        self.buffer = self.buffer[-(8):]
+                    break
+
+        return output
+
+    def finalize(self) -> str:
+        """
+        处理结束，输出剩余的 buffer
+
+        Returns:
+            剩余的可输出文本
+        """
+        if not self.in_think:
+            output = self.buffer
+            self.buffer = ""
+            return output
+        return ""
 
 
 class LLMClient:
@@ -43,12 +112,13 @@ class LLMClient:
             on_chunk: 回调函数，接收每个生成的文本片段
 
         Returns:
-            完整的回复文本
+            完整的回复文本（已移除 <think>...</think> 标签）
 
         Raises:
             Exception: API 调用错误
         """
         full_response = ""
+        think_filter = ThinkTagFilter()
 
         try:
             stream = await self.client.chat.completions.create(
@@ -62,11 +132,25 @@ class LLMClient:
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
-                    # 如果是第一个 chunk，去除前导空格
-                    if not full_response:
-                        content = content.lstrip()
-                    full_response += content
-                    await on_chunk(content)
+
+                    # 通过过滤器处理，移除 <think>...</think> 标签
+                    filtered_content = think_filter.process_chunk(content)
+
+                    # 如果是第一个有效输出，去除前导空格
+                    if filtered_content and not full_response:
+                        filtered_content = filtered_content.lstrip()
+
+                    if filtered_content:
+                        full_response += filtered_content
+                        await on_chunk(filtered_content)
+
+            # 处理结束，输出剩余 buffer
+            remaining = think_filter.finalize()
+            if remaining:
+                if not full_response:
+                    remaining = remaining.lstrip()
+                full_response += remaining
+                await on_chunk(remaining)
 
         except Exception as e:
             raise Exception(f"LLM API 调用失败: {e}")

@@ -111,9 +111,12 @@ class TestLLMClient:
             messages = [{"role": "user", "content": "Test"}]
             result = await client.chat_stream(messages, on_chunk)
 
-            # 验证
+            # 验证最终结果
             assert result == "Hello world!"
-            assert received_chunks == ["Hello", " world", "!"]
+            # 验证所有 chunks 拼接后的结果正确
+            assert "".join(received_chunks) == "Hello world!"
+            # 验证至少收到了一些 chunks
+            assert len(received_chunks) > 0
 
     @pytest.mark.asyncio
     async def test_chat_stream_empty_delta(self, client):
