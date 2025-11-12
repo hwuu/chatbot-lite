@@ -13,7 +13,7 @@ class CopyButton(Button):
     """带有消息内容的复制按钮"""
 
     def __init__(self, message_content: str, **kwargs):
-        super().__init__("📋 复制", **kwargs)
+        super().__init__("复制到剪贴板", **kwargs)
         self.message_content = message_content
 
 
@@ -167,6 +167,13 @@ class ChatView(VerticalScroll):
                     pyperclip.copy(event.button.message_content)
                 except Exception:
                     pass
+
+            # 复制完成后，将焦点返回到输入框
+            try:
+                input_bar = self.app.query_one("#input_bar")
+                input_bar.focus()
+            except Exception:
+                pass
 
     def clear_chat(self):
         """清空聊天记录"""
