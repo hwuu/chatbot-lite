@@ -235,6 +235,40 @@ class TestLLMClient:
             assert result == "Hello from LLM"
 
     @pytest.mark.asyncio
+    async def test_chat_with_think_tags(self, client):
+        """测试非流式对话过滤 think 标签"""
+        # Mock 响应包含 think 标签
+        mock_response = ChatCompletion(
+            id="completion1",
+            model="test-model",
+            object="chat.completion",
+            created=1234567890,
+            choices=[
+                CompletionChoice(
+                    index=0,
+                    message=ChatCompletionMessage(
+                        role="assistant",
+                        content="<think>internal reasoning</think>Hello from LLM"
+                    ),
+                    finish_reason="stop",
+                )
+            ],
+        )
+
+        with patch.object(
+            client.client.chat.completions,
+            "create",
+            new_callable=AsyncMock,
+            return_value=mock_response,
+        ):
+            messages = [{"role": "user", "content": "Test"}]
+            result = await client.chat(messages)
+
+            # think 标签应该被过滤掉
+            assert result == "Hello from LLM"
+            assert "<think>" not in result
+
+    @pytest.mark.asyncio
     async def test_chat_api_error(self, client):
         """测试非流式对话 API 错误"""
         with patch.object(

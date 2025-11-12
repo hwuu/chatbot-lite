@@ -168,7 +168,7 @@ class LLMClient:
             messages: 对话历史
 
         Returns:
-            完整的回复文本
+            完整的回复文本（已移除 <think>...</think> 标签）
 
         Raises:
             Exception: API 调用错误
@@ -182,7 +182,14 @@ class LLMClient:
                 stream=False,
             )
 
-            return response.choices[0].message.content
+            content = response.choices[0].message.content
+
+            # 过滤 <think>...</think> 标签
+            think_filter = ThinkTagFilter()
+            filtered_content = think_filter.process_chunk(content)
+            filtered_content += think_filter.finalize()
+
+            return filtered_content.strip()
 
         except Exception as e:
             raise Exception(f"LLM API 调用失败: {e}")
@@ -220,7 +227,15 @@ class LLMClient:
                 stream=False,
             )
 
-            title = response.choices[0].message.content.strip()
+            title = response.choices[0].message.content
+
+            # 过滤 <think>...</think> 标签
+            think_filter = ThinkTagFilter()
+            title = think_filter.process_chunk(title)
+            title += think_filter.finalize()
+
+            # 清理标题
+            title = title.strip()
             # 移除可能的引号
             title = title.strip('"').strip("'")
             # 限制长度
