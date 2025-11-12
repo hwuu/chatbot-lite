@@ -5,7 +5,7 @@ import math
 from rich.markdown import Markdown
 from rich.text import Text
 from textual.containers import VerticalScroll
-from textual.widgets import RichLog, Static
+from textual.widgets import Label, RichLog, Static
 
 
 class ChatView(VerticalScroll):
@@ -37,11 +37,12 @@ class ChatView(VerticalScroll):
         # 添加用户消息标签
         label = Static(Text("\n● You\n", style="bold cyan"))
         self.mount(label)
-        # 添加消息内容（缩进两个空格，使用配置的代码主题，左对齐）
-        content_widget = Static(
+        # 添加消息内容（可选择，缩进两个空格，使用配置的代码主题，左对齐）
+        content_widget = Label(
             Markdown(content, code_theme=self._code_theme, justify="left"),
             classes="message-content"
         )
+        content_widget.can_focus = False  # 不获取焦点，但可以选择文本
         self.mount(content_widget)
         # 自动滚动到底部
         self.scroll_end(animate=False)
@@ -90,12 +91,13 @@ class ChatView(VerticalScroll):
             self._streaming_widget.remove()
             self._streaming_widget = None
 
-        # 添加最终的 Markdown 渲染版本（缩进两个空格，使用配置的代码主题，左对齐）
+        # 添加最终的 Markdown 渲染版本（可选择，缩进两个空格，使用配置的代码主题，左对齐）
         if self._current_assistant_message:
-            content_widget = Static(
+            content_widget = Label(
                 Markdown(self._current_assistant_message, code_theme=self._code_theme, justify="left"),
                 classes="message-content"
             )
+            content_widget.can_focus = False  # 不获取焦点，但可以选择文本
             self.mount(content_widget)
 
         ## 添加分割线
