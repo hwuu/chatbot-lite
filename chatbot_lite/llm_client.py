@@ -7,6 +7,7 @@ import re
 import time
 from typing import Callable, Dict, List, Awaitable
 
+import httpx
 from openai import AsyncOpenAI
 
 from chatbot_lite.config import LLMConfig
@@ -94,11 +95,22 @@ class LLMClient:
         """
         self.config = config
         self.logger = get_logger(__name__)
+
+        # 创建禁用代理的 HTTP 客户端
+        # proxy=None: 显式设置不使用代理
+        # trust_env=False: 忽略环境变量中的代理设置（HTTP_PROXY, HTTPS_PROXY 等）
+        http_client = httpx.AsyncClient(
+            proxy=None,  # 显式禁用代理
+            trust_env=False,  # 忽略环境变量
+            timeout=60.0,  # 设置超时时间
+        )
+
         self.client = AsyncOpenAI(
             api_key=config.api_key,
             base_url=config.api_base,
+            http_client=http_client,
         )
-        self.logger.info(f"LLM 客户端初始化: 模型={config.model}, API地址={config.api_base}")
+        self.logger.info(f"LLM 客户端初始化: 模型={config.model}, API地址={config.api_base}, 已禁用代理")
 
     async def close(self):
         """关闭客户端连接"""
