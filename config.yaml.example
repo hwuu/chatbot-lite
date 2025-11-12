@@ -14,3 +14,4 @@ app:
   compress_threshold: 0.85               # Token 达到 85% 时触发压缩
   compress_summary_tokens: 300           # 压缩后摘要的目标长度
   markdown_code_theme: "monokai"         # Markdown 代码块主题（可选: github-dark, dracula, one-dark, solarized-dark, nord 等）
+  ui_theme: "monokai"                    # UI 主题（可选: textual-dark, nord, gruvbox, monokai, dracula, tokyo-night 等）

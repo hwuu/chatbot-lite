@@ -40,6 +40,9 @@ class AppConfig(BaseModel):
     markdown_code_theme: str = Field(
         default="monokai", description="Markdown 代码块主题"
     )
+    ui_theme: str = Field(
+        default="monokai", description="UI 主题"
+    )
 
     @field_validator("context_strategy")
     @classmethod
@@ -65,6 +68,25 @@ class AppConfig(BaseModel):
                 )
         except ImportError:
             # 如果 pygments 未安装，跳过验证
+            pass
+        return v
+
+    @field_validator("ui_theme")
+    @classmethod
+    def validate_ui_theme(cls, v: str) -> str:
+        """验证 UI 主题"""
+        # 获取所有可用的 Textual 主题
+        try:
+            from textual.app import App
+            app = App()
+            available_themes = list(app.available_themes.keys())
+            if v not in available_themes:
+                raise ValueError(
+                    f"ui_theme '{v}' 不是有效的主题。"
+                    f"可用主题: {', '.join(sorted(available_themes))}"
+                )
+        except Exception:
+            # 如果获取主题列表失败，跳过验证
             pass
         return v
 
@@ -94,6 +116,7 @@ app:
   compress_threshold: 0.85                  # Token 达到 85% 时触发压缩
   compress_summary_tokens: 300              # 压缩后摘要的目标长度
   markdown_code_theme: "monokai"            # Markdown 代码块主题
+  ui_theme: "monokai"                       # UI 主题（textual-dark, nord, gruvbox, monokai 等）
 """
 
 

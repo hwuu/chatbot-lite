@@ -77,6 +77,7 @@ class ChatbotApp(App):
         self.context_manager: ContextManager = None
         self.current_session_id: str = None
         self.is_generating: bool = False
+        self.theme = "monokai"
 
     def compose(self) -> ComposeResult:
         """组合 UI 组件"""
@@ -93,6 +94,9 @@ class ChatbotApp(App):
         try:
             # 加载配置
             self.config = load_config()
+
+            # 设置 UI 主题
+            self.theme = self.config.app.ui_theme
 
             # 更新 ChatView 的代码主题
             chat_view = self.query_one("#chat_view", ChatView)
