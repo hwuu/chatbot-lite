@@ -70,18 +70,20 @@ class SessionList(Container):
         """切换显示/隐藏"""
         self.toggle_class("hidden")
 
-    def update_sessions(self, sessions: list):
+    def update_sessions(self, sessions: list, current_session_id: str = None):
         """
         更新会话列表
 
         Args:
             sessions: 会话列表 [{"session_id": ..., "title": ..., "updated_at": ...}]
+            current_session_id: 当前选中的会话 ID
         """
         self.sessions = sessions
         listview = self.query_one("#session_listview", ListView)
         listview.clear()
 
-        for session in sessions:
+        selected_index = None
+        for index, session in enumerate(sessions):
             # 格式化标题
             title = session["title"]
             if len(title) > 25:
@@ -95,6 +97,24 @@ class SessionList(Container):
             list_item = ListItem(Label(item_text))
             list_item.session_id = session["session_id"]  # 附加 session_id
             listview.append(list_item)
+
+            # 记录当前会话的索引
+            if current_session_id and session["session_id"] == current_session_id:
+                selected_index = index
+
+        # 所有项添加完成后，设置选中状态
+        if selected_index is not None and len(listview.children) > 0:
+            # 使用 set_timer 确保在下一个事件循环中执行
+            self.set_timer(0.01, lambda: self._select_index(selected_index))
+
+    def _select_index(self, index: int):
+        """延迟设置选中索引"""
+        try:
+            listview = self.query_one("#session_listview", ListView)
+            if index < len(listview.children):
+                listview.index = index
+        except Exception:
+            pass
 
     @on(ListView.Selected)
     def on_session_selected(self, event: ListView.Selected):

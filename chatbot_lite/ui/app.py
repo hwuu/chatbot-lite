@@ -109,6 +109,8 @@ class ChatbotApp(App):
         self.current_session_id: str = None
         self.is_generating: bool = False
         self.theme = "monokai"
+        # 存储每个 session 的草稿内容和历史浏览状态
+        self.session_drafts: dict = {}  # {session_id: {"draft": str, "history_index": int}}
 
     def compose(self) -> ComposeResult:
         """组合 UI 组件"""
@@ -144,27 +146,24 @@ class ChatbotApp(App):
             )
             self.logger.info("核心组件初始化完成")
 
-            # 创建新会话
-            await self.action_new_session()
-
-            # 显示欢迎消息
-            chat_view = self.query_one("#chat_view", ChatView)
-            welcome_banner = r"""
-  _____ _           _   _           _           _      _ _
- / ____| |         | | | |         | |         | |    (_) |
-| |    | |__   __ _| |_| |__   ___ | |_ ______ | |     _| |_ ___
-| |    | '_ \ / _` | __| '_ \ / _ \| __|______|| |    | | __/ _ \
-| |____| | | | (_| | |_| |_) | (_) | |_        | |____| | ||  __/
- \_____|_| |_|\__,_|\__|_.__/ \___/ \__|       |______|_|\__\___|
-
-            """
-            chat_view.append_system_message(
-                welcome_banner + "\nType your message and press Ctrl+J to send (Enter for new line)."
-            )
+            # 检查是否有已存在的会话
+            sessions = self.session_manager.list_sessions()
+            if sessions:
+                # 有已存在的会话，加载最新的一个
+                latest_session_id = sessions[0]["session_id"]
+                await self._load_session(latest_session_id)
+                self.logger.info(f"加载最新会话: {latest_session_id}")
+            else:
+                # 没有已存在的会话，创建新会话
+                await self.action_new_session()
+                self.logger.info("创建新会话")
 
             # 聚焦到输入框
             input_bar = self.query_one("#input_bar", InputBar)
             input_bar.focus()
+
+            # 在 UI 完全初始化后刷新会话列表（确保选中状态生效）
+            self.call_after_refresh(self._refresh_session_list)
 
             self.logger.info("应用启动完成")
 
@@ -186,6 +185,22 @@ class ChatbotApp(App):
         if self.is_generating:
             self.is_generating = False
 
+    def _show_welcome_message(self):
+        """显示欢迎消息"""
+        chat_view = self.query_one("#chat_view", ChatView)
+        welcome_banner = r"""
+  _____ _           _   _           _           _      _ _
+ / ____| |         | | | |         | |         | |    (_) |
+| |    | |__   __ _| |_| |__   ___ | |_ ______ | |     _| |_ ___
+| |    | '_ \ / _` | __| '_ \ / _ \| __|______|| |    | | __/ _ \
+| |____| | | | (_| | |_| |_) | (_) | |_        | |____| | ||  __/
+ \_____|_| |_|\__,_|\__|_.__/ \___/ \__|       |______|_|\__\___|
+
+            """
+        chat_view.append_system_message(
+            welcome_banner + "\nType your message and press Ctrl+J to send (Enter for new line)."
+        )
+
     async def action_copy_last_message(self):
         """Ctrl+Y 复制最后一条助手消息"""
         chat_view = self.query_one("#chat_view", ChatView)
@@ -204,18 +219,30 @@ class ChatbotApp(App):
 
     async def action_new_session(self):
         """创建新会话"""
-        # 清理当前空 session
+        # 1. 检查当前会话是否为空
         if self.current_session_id and self.session_manager.is_session_empty(self.current_session_id):
-            try:
-                self.session_manager.delete_session(self.current_session_id)
-            except FileNotFoundError:
-                pass
+            # 当前会话为空，不需要创建新会话
+            return
 
-        # 创建新 session，但不立即保存到磁盘
+        # 2. 检查是否已有其他空会话
+        empty_session_id = self.session_manager.find_empty_session()
+        if empty_session_id:
+            # 找到空会话，切换到它
+            await self._load_session(empty_session_id)
+            # 刷新会话列表，更新选中状态
+            self._refresh_session_list()
+            return
+
+        # 3. 没有空会话，创建新会话（不立即保存到磁盘）
         self.current_session_id = self.session_manager.create_session(
             self.config.llm.system_prompt, save_to_disk=False
         )
         self.context_manager.reset_compression()
+
+        # 4. 清空当前对话显示并显示欢迎消息
+        chat_view = self.query_one("#chat_view", ChatView)
+        chat_view.clear_chat()
+        self._show_welcome_message()
 
         # 更新会话列表
         self._refresh_session_list()
@@ -225,7 +252,7 @@ class ChatbotApp(App):
         session_list = self.query_one("#session_list", SessionList)
         session_list.toggle_visibility()
 
-        # 如果显示会话列表，刷新列表
+        # 如果显示会话列表，刷新列表并设置选中状态
         if not session_list.has_class("hidden"):
             self._refresh_session_list()
 
@@ -237,12 +264,14 @@ class ChatbotApp(App):
         # 如果用户选择了会话，加载该会话
         if result:
             await self._load_session(result)
+            # 刷新会话列表，更新选中状态
+            self._refresh_session_list()
 
     def _refresh_session_list(self):
         """刷新会话列表"""
         sessions = self.session_manager.list_sessions()
         session_list = self.query_one("#session_list", SessionList)
-        session_list.update_sessions(sessions)
+        session_list.update_sessions(sessions, self.current_session_id)
 
     async def _generate_title(self, user_message: str):
         """
@@ -268,12 +297,11 @@ class ChatbotApp(App):
             session_id: 会话 ID
         """
         try:
-            # 清理当前空 session
-            if self.current_session_id and self.session_manager.is_session_empty(self.current_session_id):
-                try:
-                    self.session_manager.delete_session(self.current_session_id)
-                except FileNotFoundError:
-                    pass
+            # 保存当前 session 的草稿状态（如果有）
+            if self.current_session_id:
+                input_bar = self.query_one("#input_bar", InputBar)
+                self.session_drafts[self.current_session_id] = input_bar.get_draft_state()
+                self.logger.info(f"保存 session {self.current_session_id} 的草稿状态")
 
             # 加载会话
             session = self.session_manager.load_session(session_id)
@@ -282,18 +310,35 @@ class ChatbotApp(App):
             # 重置上下文管理器
             self.context_manager.reset_compression()
 
+            # 加载该会话的用户输入历史
+            input_bar = self.query_one("#input_bar", InputBar)
+            input_bar.load_history(session["messages"])
+
+            # 恢复该 session 的草稿状态
+            if session_id in self.session_drafts:
+                input_bar.set_draft_state(self.session_drafts[session_id])
+                self.logger.info(f"恢复 session {session_id} 的草稿状态")
+            else:
+                input_bar.set_draft_state(None)
+                self.logger.info(f"session {session_id} 无草稿状态，清空输入框")
+
             # 清空当前对话显示
             chat_view = self.query_one("#chat_view", ChatView)
             chat_view.clear_chat()
 
-            # 显示会话消息（跳过 system prompt）
-            for msg in session["messages"][1:]:
-                if msg["role"] == "user":
-                    chat_view.append_user_message(msg["content"])
-                elif msg["role"] == "assistant":
-                    chat_view.append_assistant_message_start()
-                    chat_view.append_assistant_chunk(msg["content"])
-                    chat_view.finalize_assistant_message()
+            # 检查会话是否为空
+            if len(session["messages"]) == 1:
+                # 空会话，显示欢迎消息
+                self._show_welcome_message()
+            else:
+                # 显示会话消息（跳过 system prompt）
+                for msg in session["messages"][1:]:
+                    if msg["role"] == "user":
+                        chat_view.append_user_message(msg["content"])
+                    elif msg["role"] == "assistant":
+                        chat_view.append_assistant_message_start()
+                        chat_view.append_assistant_chunk(msg["content"])
+                        chat_view.finalize_assistant_message()
 
         except Exception as e:
             chat_view = self.query_one("#chat_view", ChatView)
@@ -303,6 +348,10 @@ class ChatbotApp(App):
     async def handle_session_selected(self, message: SessionSelected):
         """处理会话选中事件"""
         await self._load_session(message.session_id)
+
+        # 将焦点返回到输入框
+        input_bar = self.query_one("#input_bar", InputBar)
+        input_bar.focus()
 
     @on(MessageSubmitted)
     async def handle_message_submitted(self, message: MessageSubmitted):
@@ -315,6 +364,11 @@ class ChatbotApp(App):
         # 显示用户消息
         chat_view = self.query_one("#chat_view", ChatView)
         chat_view.append_user_message(user_message)
+
+        # 清除当前 session 的草稿状态（因为消息已提交）
+        if self.current_session_id in self.session_drafts:
+            del self.session_drafts[self.current_session_id]
+            self.logger.info(f"清除 session {self.current_session_id} 的草稿状态")
 
         # 检查是否是第一条用户消息（用于生成标题）
         session = self.session_manager.load_session(self.current_session_id)

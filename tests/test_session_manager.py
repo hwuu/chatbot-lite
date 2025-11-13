@@ -44,7 +44,7 @@ class TestSessionManager:
         # 验证会话内容
         session_data = manager.load_session(session_id)
         assert session_data["session_id"] == session_id
-        assert session_data["title"] == "New Chat"
+        assert session_data["title"] == "(空会话)"
         assert len(session_data["messages"]) == 1
         assert session_data["messages"][0]["role"] == "system"
         assert session_data["messages"][0]["content"] == system_prompt

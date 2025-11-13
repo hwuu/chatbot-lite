@@ -48,7 +48,7 @@ class SessionManager:
             "session_id": session_id,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
-            "title": "New Chat",  # 默认标题，首次用户消息后会更新
+            "title": "(空会话)",  # 默认标题，首次用户消息后会更新
             "messages": [
                 {
                     "role": "system",
@@ -103,7 +103,7 @@ class SessionManager:
 
     def list_sessions(self, limit: Optional[int] = None) -> List[Dict]:
         """
-        列出所有会话（按更新时间倒序）
+        列出所有会话（按更新时间倒序），包括磁盘和内存中的会话
 
         Args:
             limit: 限制返回数量，None 表示不限制
@@ -113,6 +113,7 @@ class SessionManager:
         """
         sessions = []
 
+        # 添加磁盘上的会话
         for session_path in self.history_dir.glob("session_*.json"):
             try:
                 with open(session_path, "r", encoding="utf-8") as f:
@@ -129,6 +130,18 @@ class SessionManager:
             except (json.JSONDecodeError, KeyError):
                 # 跳过损坏的文件
                 continue
+
+        # 添加内存中的会话
+        for session_id, data in self._memory_sessions.items():
+            sessions.append(
+                {
+                    "session_id": data["session_id"],
+                    "title": data["title"],
+                    "updated_at": data["updated_at"],
+                    "created_at": data["created_at"],
+                    "message_count": len(data["messages"]) - 1,  # 减去 system
+                }
+            )
 
         # 按更新时间倒序排列
         sessions.sort(key=lambda x: x["updated_at"], reverse=True)
@@ -273,6 +286,27 @@ class SessionManager:
             return len(session["messages"]) == 1 and session["messages"][0]["role"] == "system"
         except FileNotFoundError:
             return True
+
+    def find_empty_session(self) -> Optional[str]:
+        """
+        查找一个空会话（优先返回最新的）
+
+        Returns:
+            空会话的 session_id，如果没有空会话则返回 None
+        """
+        # 先检查内存中的会话
+        for session_id in self._memory_sessions:
+            if self.is_session_empty(session_id):
+                return session_id
+
+        # 再检查磁盘上的会话
+        sessions = self.list_sessions()
+        for session_info in sessions:
+            session_id = session_info["session_id"]
+            if self.is_session_empty(session_id):
+                return session_id
+
+        return None
 
     def update_title(self, session_id: str, title: str):
         """
