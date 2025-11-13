@@ -30,6 +30,8 @@ class InputBar(TextArea):
 
     BINDINGS = [
         Binding("ctrl+j", "submit", "Send", show=True, priority=True),
+        Binding("ctrl+up", "history_prev", "Previous Input", show=False, priority=True),
+        Binding("ctrl+down", "history_next", "Next Input", show=False, priority=True),
     ]
 
     def __init__(self, **kwargs):
@@ -64,26 +66,14 @@ class InputBar(TextArea):
 
     def on_key(self, event: events.Key) -> None:
         """按键事件处理"""
-        # 处理历史导航快捷键
-        # 在 Textual 中，Ctrl+Up 的 key 可能是 "ctrl+up" 或需要检查 character
-        if event.key == "ctrl+up" or (event.key == "up" and "ctrl" in str(event.key).lower()):
-            self.action_history_prev()
-            event.prevent_default()
-            event.stop()
-            return
-
-        if event.key == "ctrl+down" or (event.key == "down" and "ctrl" in str(event.key).lower()):
-            self.action_history_next()
-            event.prevent_default()
-            event.stop()
-            return
-
         # 按键后立即更新高度
         self._update_height()
 
         # 如果用户输入了内容（不是导航键），重置历史浏览状态
         if self._history_index != -1:
-            self._history_index = -1
+            # 检查是否是导航键
+            if event.key not in ["ctrl+up", "ctrl+down"]:
+                self._history_index = -1
 
     @on(TextArea.Changed)
     def on_textarea_changed(self) -> None:
