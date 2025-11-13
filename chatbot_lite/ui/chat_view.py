@@ -2,11 +2,10 @@
 
 import math
 
-from rich.markdown import Markdown
 from rich.text import Text
 from textual import on
 from textual.containers import Horizontal, VerticalScroll
-from textual.widgets import Button, Static
+from textual.widgets import Button, Markdown, Static
 
 
 class CopyButton(Button):
@@ -100,10 +99,10 @@ class ChatView(VerticalScroll):
             self._streaming_widget.remove()
             self._streaming_widget = None
 
-        # 添加最终的 Markdown 渲染版本（可选择，缩进两个空格，使用配置的代码主题，左对齐）
+        # 添加最终的 Markdown 渲染版本（可选择，缩进两个空格）
         if self._current_assistant_message:
-            content_widget = Static(
-                Markdown(self._current_assistant_message, code_theme=self._code_theme, justify="left"),
+            content_widget = Markdown(
+                self._current_assistant_message,
                 classes="message-content"
             )
             self.mount(content_widget)

@@ -54,6 +54,18 @@ class ChatbotApp(App):
         margin-left: 2;
     }
 
+    /* Markdown widget 内容不要额外缩进 */
+    #chat_view Markdown {
+        margin-left: 2;
+        padding-left: 0;
+    }
+
+    /* Markdown 标题左对齐 */
+    MarkdownH1, MarkdownH2, MarkdownH3, MarkdownH4, MarkdownH5, MarkdownH6 {
+        text-align: left;
+        align-horizontal: left;
+    }
+
     #chat_view .copy-button-container {
         height: auto;
         margin-left: 2;
