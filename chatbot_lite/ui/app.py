@@ -10,7 +10,7 @@ from textual.widgets import Footer
 
 from chatbot_lite.config import Config, load_config
 from chatbot_lite.context_manager import ContextManager
-from chatbot_lite.llm_client import LLMClient
+from chatbot_lite.llm_client import LLMClient, GenerationCancelled
 from chatbot_lite.logger import get_logger, setup_logger
 from chatbot_lite.session_manager import SessionManager
 from chatbot_lite.ui.chat_view import ChatView
@@ -54,6 +54,11 @@ class ChatbotApp(App):
         margin-left: 2;
     }
 
+    #chat_view .welcome-message {
+        text-align: center;
+        width: 100%;
+    }
+
     /* Markdown widget 内容不要额外缩进 */
     #chat_view Markdown {
         margin-left: 2;
@@ -92,7 +97,7 @@ class ChatbotApp(App):
         Binding("ctrl+l", "toggle_sessions", "Sessions", show=True),
         Binding("ctrl+f", "search", "Search", show=True),
         Binding("ctrl+y", "copy_last_message", "Copy", show=False),
-        Binding("escape", "cancel", "Cancel", show=False),
+        Binding("ctrl+c", "cancel", "Stop", show=True),
     ]
 
     def __init__(self):
@@ -181,25 +186,11 @@ class ChatbotApp(App):
             self.exit()
 
     async def action_cancel(self):
-        """Esc 中断生成"""
+        """Ctrl+C 中断生成"""
         if self.is_generating:
+            self.logger.info("用户按 Ctrl+C 键，设置 is_generating = False")
             self.is_generating = False
-
-    def _show_welcome_message(self):
-        """显示欢迎消息"""
-        chat_view = self.query_one("#chat_view", ChatView)
-        welcome_banner = r"""
-  _____ _           _   _           _           _      _ _
- / ____| |         | | | |         | |         | |    (_) |
-| |    | |__   __ _| |_| |__   ___ | |_ ______ | |     _| |_ ___
-| |    | '_ \ / _` | __| '_ \ / _ \| __|______|| |    | | __/ _ \
-| |____| | | | (_| | |_| |_) | (_) | |_        | |____| | ||  __/
- \_____|_| |_|\__,_|\__|_.__/ \___/ \__|       |______|_|\__\___|
-
-            """
-        chat_view.append_system_message(
-            welcome_banner + "\nType your message and press Ctrl+Enter to send (Enter for new line)."
-        )
+            self.notify("正在中断生成...", timeout=2.0)
 
     async def action_copy_last_message(self):
         """Ctrl+Y 复制最后一条助手消息"""
@@ -239,10 +230,9 @@ class ChatbotApp(App):
         )
         self.context_manager.reset_compression()
 
-        # 4. 清空当前对话显示并显示欢迎消息
+        # 4. 清空当前对话显示
         chat_view = self.query_one("#chat_view", ChatView)
         chat_view.clear_chat()
-        self._show_welcome_message()
 
         # 更新会话列表
         self._refresh_session_list()
@@ -326,12 +316,8 @@ class ChatbotApp(App):
             chat_view = self.query_one("#chat_view", ChatView)
             chat_view.clear_chat()
 
-            # 检查会话是否为空
-            if len(session["messages"]) == 1:
-                # 空会话，显示欢迎消息
-                self._show_welcome_message()
-            else:
-                # 显示会话消息（跳过 system prompt）
+            # 显示会话消息（跳过 system prompt）
+            if len(session["messages"]) > 1:
                 for msg in session["messages"][1:]:
                     if msg["role"] == "user":
                         chat_view.append_user_message(msg["content"])
@@ -370,7 +356,7 @@ class ChatbotApp(App):
             del self.session_drafts[self.current_session_id]
             self.logger.info(f"清除 session {self.current_session_id} 的草稿状态")
 
-        # 检查是否是第一条用户消息（用于生成标题）
+        # 在保存之前检查是否是第一条用户消息
         session = self.session_manager.load_session(self.current_session_id)
         is_first_user_message = len([m for m in session["messages"] if m["role"] == "user"]) == 0
 
@@ -383,8 +369,9 @@ class ChatbotApp(App):
         # 刷新 session list（更新时间变了）
         self._refresh_session_list()
 
-        # 如果是第一条用户消息，异步生成标题
-        if is_first_user_message:
+        # 检查是否需要生成标题
+        session = self.session_manager.load_session(self.current_session_id)
+        if is_first_user_message or not session["title"]:
             self.run_worker(self._generate_title(user_message), exclusive=False)
 
         # 更新状态
@@ -404,18 +391,17 @@ class ChatbotApp(App):
             assistant_response = ""
 
             async def on_chunk(chunk: str):
-                if not self.is_generating:
-                    # 用户中断
-                    return
                 chat_view.append_assistant_chunk(chunk)
                 nonlocal assistant_response
                 assistant_response += chunk
 
+            # 传递取消检查函数
             full_response = await self.llm_client.chat_stream(
-                context_messages, on_chunk
+                context_messages, on_chunk, lambda: not self.is_generating
             )
 
             # 完成助手消息
+            self.logger.info(f"流式生成完成，is_generating={self.is_generating}，response长度={len(full_response)}")
             chat_view.finalize_assistant_message()
 
             # 保存助手回复

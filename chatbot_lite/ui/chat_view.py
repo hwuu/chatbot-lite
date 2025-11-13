@@ -142,6 +142,16 @@ class ChatView(VerticalScroll):
         widget = Static(Text(content, style="italic dim"))
         self.mount(widget)
 
+    def append_welcome_message(self, content: str):
+        """
+        添加欢迎消息（居中显示）
+
+        Args:
+            content: 欢迎消息内容
+        """
+        widget = Static(Text(content, style="italic dim"), classes="welcome-message")
+        self.mount(widget)
+
     def append_error_message(self, error: str):
         """
         添加错误消息

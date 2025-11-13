@@ -3,6 +3,7 @@
 负责与本地 LLM API 进行流式通信。
 """
 
+import asyncio
 import re
 import time
 from typing import Callable, Dict, List, Awaitable
@@ -13,6 +14,11 @@ from openai import AsyncOpenAI
 from chatbot_lite.config import LLMConfig
 from chatbot_lite.logger import get_logger
 from chatbot_lite.utils import count_tokens
+
+
+class GenerationCancelled(Exception):
+    """生成被用户取消的异常"""
+    pass
 
 
 class ThinkTagFilter:
@@ -120,6 +126,7 @@ class LLMClient:
         self,
         messages: List[Dict[str, str]],
         on_chunk: Callable[[str], Awaitable[None]],
+        is_cancelled: Callable[[], bool] = None,
     ) -> str:
         """
         流式对话
@@ -127,6 +134,7 @@ class LLMClient:
         Args:
             messages: 对话历史 [{"role": "user", "content": "..."}, ...]
             on_chunk: 回调函数，接收每个生成的文本片段
+            is_cancelled: 可选的取消检查函数，返回 True 表示用户取消
 
         Returns:
             完整的回复文本（已移除 <think>...</think> 标签）
@@ -152,6 +160,11 @@ class LLMClient:
             )
 
             async for chunk in stream:
+                # 检查是否被用户取消
+                if is_cancelled and is_cancelled():
+                    self.logger.info("检测到用户取消信号，中断流式生成")
+                    raise GenerationCancelled()
+
                 if chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
 
@@ -165,6 +178,9 @@ class LLMClient:
                     if filtered_content:
                         full_response += filtered_content
                         await on_chunk(filtered_content)
+
+                # 让出控制权，允许事件循环处理其他事件（如键盘输入）
+                await asyncio.sleep(0)
 
             # 处理结束，输出剩余 buffer
             remaining = think_filter.finalize()
@@ -181,6 +197,13 @@ class LLMClient:
                 f"流式 LLM 调用成功: 输出tokens={output_tokens}, "
                 f"响应时间={elapsed_time:.2f}s"
             )
+
+        except GenerationCancelled:
+            # 用户主动取消生成
+            elapsed_time = time.time() - start_time
+            self.logger.info(f"流式生成被用户取消, 已生成tokens={count_tokens(full_response)}, 耗时={elapsed_time:.2f}s")
+            # 不抛出异常，返回已生成的内容
+            return full_response
 
         except Exception as e:
             elapsed_time = time.time() - start_time
@@ -256,7 +279,7 @@ class LLMClient:
             user_message: 用户的第一条消息
 
         Returns:
-            生成的标题（10个字以内）
+            生成的标题
 
         Raises:
             Exception: API 调用错误
@@ -268,11 +291,13 @@ class LLMClient:
             messages = [
                 {
                     "role": "system",
-                    "content": "你是一个标题生成助手。根据用户的提问，生成一个简洁的主题标题，要求：1）20个字以内 2）尽量简短 3）只输出标题，不要其他内容"
+                    "content": "你是一个标题生成助手。根据用户的提问，生成一个简洁的主题标题，要求：" + \
+                               "1）只输出标题，不要其他内容；" + \
+                               "2）长度不超过 40 字符（每个英文字母、数字、半角符号占 1 个字符，每个中文字、全角符号占 2 个字符）。"
                 },
                 {
                     "role": "user",
-                    "content": f"请为以下提问所引发的可能的对话生成一个简短的标题：\n\n{user_message}"
+                    "content": f"请为以下提问所引发的可能的对话生成一个标题：\n\n{user_message}"
                 }
             ]
 
@@ -280,7 +305,7 @@ class LLMClient:
                 model=self.config.model,
                 messages=messages,
                 temperature=0.7,
-                max_tokens=50,
+                max_tokens=self.config.max_tokens,
                 stream=False,
             )
 

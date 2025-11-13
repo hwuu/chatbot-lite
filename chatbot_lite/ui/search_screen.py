@@ -101,8 +101,8 @@ class SearchScreen(ModalScreen):
         else:
             for result in self.search_results:
                 title = result["title"]
-                if len(title) > 40:
-                    title = title[:40] + "..."
+                if len(title) > 50:
+                    title = title[:50] + "..."
 
                 match_type = result.get("match_type", "")
                 if match_type == "title":

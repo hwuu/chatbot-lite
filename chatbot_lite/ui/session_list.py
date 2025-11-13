@@ -27,7 +27,7 @@ class SessionList(Container):
 
     DEFAULT_CSS = """
     SessionList {
-        width: 40;
+        width: 44;
         height: 100%;
         border: solid $primary;
         padding: 1;
@@ -36,6 +36,13 @@ class SessionList(Container):
 
     SessionList.hidden {
         display: none;
+    }
+
+    SessionList #session_logo {
+        color: $primary;
+        margin-bottom: 1;
+        width: auto;
+        align-horizontal: center;
     }
 
     SessionList #session_title {
@@ -65,9 +72,14 @@ class SessionList(Container):
 
     def compose(self) -> ComposeResult:
         """组合组件"""
-        #yield Label("Sessions", id="session_title")
+        # ASCII art logo
+        logo = r"""
+▄█████ ▄▄    ▄▄ ▄█████ ▄▄ ▄▄  ▄▄▄ ▄▄▄▄▄▄
+██     ██    ██ ██     ██▄██ ██▀██  ██
+▀█████ ██▄▄▄ ██ ▀█████ ██ ██ ██▀██  ██
+"""
+        yield Static(logo.strip(), id="session_logo")
         yield ListView(id="session_listview")
-        #yield Button("New Session (Ctrl+N)", id="new_session_btn", variant="primary")
 
     def toggle_visibility(self):
         """切换显示/隐藏"""
