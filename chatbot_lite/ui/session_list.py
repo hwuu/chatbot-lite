@@ -27,7 +27,7 @@ class SessionList(Container):
 
     DEFAULT_CSS = """
     SessionList {
-        width: 50;
+        width: 40;
         height: 100%;
         border: solid $primary;
         padding: 1;
@@ -47,7 +47,10 @@ class SessionList(Container):
 
     SessionList ListView {
         height: 1fr;
-        border: solid $accent;
+    }
+
+    SessionList ListView Label {
+        color: $text;
     }
 
     SessionList #new_session_btn {
@@ -57,14 +60,14 @@ class SessionList(Container):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs, classes="hidden")  # 默认隐藏
+        super().__init__(**kwargs)  # 默认显示
         self.sessions = []
 
     def compose(self) -> ComposeResult:
         """组合组件"""
-        yield Label("Sessions", id="session_title")
+        #yield Label("Sessions", id="session_title")
         yield ListView(id="session_listview")
-        yield Button("New Session (Ctrl+N)", id="new_session_btn", variant="primary")
+        #yield Button("New Session (Ctrl+N)", id="new_session_btn", variant="primary")
 
     def toggle_visibility(self):
         """切换显示/隐藏"""
@@ -89,12 +92,13 @@ class SessionList(Container):
             if len(title) > 25:
                 title = title[:25] + "..."
 
-            # 格式化时间
-            updated_at = session["updated_at"][:10]  # 只取日期部分
+            # 格式化时间为 YYYY-MM-DD HH:MM:SS
+            # updated_at 格式: 2025-11-13T15:30:33.123456
+            updated_at = session["updated_at"][:19].replace("T", " ")  # YYYY-MM-DD HH:MM:SS
 
-            # 创建列表项
-            item_text = f"{title}\n{updated_at}"
-            list_item = ListItem(Label(item_text))
+            # 创建列表项，在标题前加标记符号，日期使用深灰色
+            item_text = f"▸ {title}\n  [#666666]{updated_at}[/#666666]"
+            list_item = ListItem(Label(item_text, markup=True))
             list_item.session_id = session["session_id"]  # 附加 session_id
             listview.append(list_item)
 
@@ -122,8 +126,8 @@ class SessionList(Container):
         if hasattr(event.item, "session_id"):
             self.post_message(SessionSelected(event.item.session_id))
 
-    @on(Button.Pressed, "#new_session_btn")
-    def on_new_session_pressed(self, event: Button.Pressed):
-        """处理新建会话按钮"""
-        # 触发应用的新建会话动作
-        self.app.action_new_session()
+    #@on(Button.Pressed, "#new_session_btn")
+    #def on_new_session_pressed(self, event: Button.Pressed):
+    #    """处理新建会话按钮"""
+    #    # 触发应用的新建会话动作
+    #    self.app.action_new_session()

@@ -88,7 +88,7 @@ class ChatbotApp(App):
     """
 
     BINDINGS = [
-        Binding("ctrl+n", "new_session", "New Chat", show=True),
+        Binding("ctrl+n", "new_session", "New Session", show=True),
         Binding("ctrl+l", "toggle_sessions", "Sessions", show=True),
         Binding("ctrl+f", "search", "Search", show=True),
         Binding("ctrl+y", "copy_last_message", "Copy", show=False),
@@ -380,6 +380,9 @@ class ChatbotApp(App):
             self.current_session_id, "user", user_message
         )
 
+        # 刷新 session list（更新时间变了）
+        self._refresh_session_list()
+
         # 如果是第一条用户消息，异步生成标题
         if is_first_user_message:
             self.run_worker(self._generate_title(user_message), exclusive=False)
@@ -420,6 +423,8 @@ class ChatbotApp(App):
                 self.session_manager.save_message(
                     self.current_session_id, "assistant", full_response
                 )
+                # 刷新 session list（更新时间变了）
+                self._refresh_session_list()
 
         except Exception as e:
             # 错误处理

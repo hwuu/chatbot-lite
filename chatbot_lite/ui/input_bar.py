@@ -30,8 +30,10 @@ class InputBar(TextArea):
 
     BINDINGS = [
         Binding("ctrl+enter", "submit", "Send", show=True, priority=True),
+        Binding("ctrl+j", "submit", show=False, priority=True),  # Ctrl+Enter 在终端中等同于 Ctrl+J
         Binding("ctrl+up", "history_prev", "Prev", show=True, priority=True),
         Binding("ctrl+down", "history_next", "Next", show=True, priority=True),
+        Binding("ctrl+f", "search_sessions", "Search", show=True, priority=True),
     ]
 
     def __init__(self, **kwargs):
@@ -66,14 +68,16 @@ class InputBar(TextArea):
 
     def on_key(self, event: events.Key) -> None:
         """按键事件处理"""
+        # 让 BINDINGS 处理的按键直接跳过
+        if event.key in ["ctrl+enter", "ctrl+j", "ctrl+up", "ctrl+down", "ctrl+f"]:
+            return
+
         # 按键后立即更新高度
         self._update_height()
 
         # 如果用户输入了内容（不是导航键），重置历史浏览状态
         if self._history_index != -1:
-            # 检查是否是导航键
-            if event.key not in ["ctrl+up", "ctrl+down"]:
-                self._history_index = -1
+            self._history_index = -1
 
     @on(TextArea.Changed)
     def on_textarea_changed(self) -> None:
@@ -83,6 +87,10 @@ class InputBar(TextArea):
     def action_submit(self):
         """提交消息的 action"""
         self.run_worker(self.submit_message())
+
+    def action_search_sessions(self):
+        """搜索会话的 action（触发 App 的搜索功能）"""
+        self.run_worker(self.app.action_search())
 
     async def submit_message(self):
         """提交消息"""
