@@ -91,8 +91,8 @@ class ChatbotApp(App):
         Binding("ctrl+n", "new_session", "New Chat", show=True),
         Binding("ctrl+l", "toggle_sessions", "Sessions", show=True),
         Binding("ctrl+f", "search", "Search", show=True),
-        Binding("ctrl+y", "copy_last_message", "Copy", show=True),
-        Binding("escape", "cancel", "Cancel", show=True),
+        Binding("ctrl+y", "copy_last_message", "Copy", show=False),
+        Binding("escape", "cancel", "Cancel", show=False),
     ]
 
     def __init__(self):
@@ -198,7 +198,7 @@ class ChatbotApp(App):
 
             """
         chat_view.append_system_message(
-            welcome_banner + "\nType your message and press Ctrl+J to send (Enter for new line)."
+            welcome_banner + "\nType your message and press Ctrl+Enter to send (Enter for new line)."
         )
 
     async def action_copy_last_message(self):

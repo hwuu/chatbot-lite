@@ -23,15 +23,15 @@ class InputBar(TextArea):
     支持：
     - 多行输入
     - Enter 换行
-    - Ctrl+J 发送消息
+    - Ctrl+Enter 发送消息
     - Ctrl+Up/Down 浏览历史输入
     - 高度自适应（5-25行）
     """
 
     BINDINGS = [
-        Binding("ctrl+j", "submit", "Send", show=True, priority=True),
-        Binding("ctrl+up", "history_prev", "Previous Input", show=False, priority=True),
-        Binding("ctrl+down", "history_next", "Next Input", show=False, priority=True),
+        Binding("ctrl+enter", "submit", "Send", show=True, priority=True),
+        Binding("ctrl+up", "history_prev", "Prev", show=True, priority=True),
+        Binding("ctrl+down", "history_next", "Next", show=True, priority=True),
     ]
 
     def __init__(self, **kwargs):
