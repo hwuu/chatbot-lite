@@ -1,5 +1,6 @@
 """主应用"""
 
+import asyncio
 import time
 
 from textual import on
@@ -15,6 +16,7 @@ from chatbot_lite.logger import get_logger, setup_logger
 from chatbot_lite.session_manager import SessionManager
 from chatbot_lite.ui.chat_view import ChatView
 from chatbot_lite.ui.input_bar import InputBar, MessageSubmitted
+from chatbot_lite.ui.quit_screen import QuitScreen
 from chatbot_lite.ui.search_screen import SearchScreen
 from chatbot_lite.ui.session_list import SessionList, SessionSelected
 from chatbot_lite.utils import count_tokens
@@ -98,6 +100,7 @@ class ChatbotApp(App):
         Binding("ctrl+f", "search", "Search", show=True),
         Binding("ctrl+y", "copy_last_message", "Copy", show=False),
         Binding("ctrl+c", "cancel", "Stop", show=True),
+        Binding("ctrl+q", "request_quit", "Quit", show=True),  # 用不同的名字
     ]
 
     def __init__(self):
@@ -257,6 +260,15 @@ class ChatbotApp(App):
             # 刷新会话列表，更新选中状态
             self._refresh_session_list()
 
+    async def action_request_quit(self):
+        """请求退出应用（显示确认对话框）"""
+        def check_quit_result(result):
+            """处理退出对话框结果的回调"""
+            if result:
+                self.exit()
+
+        self.push_screen(QuitScreen(), check_quit_result)
+
     def _refresh_session_list(self):
         """刷新会话列表"""
         sessions = self.session_manager.list_sessions()
@@ -374,6 +386,21 @@ class ChatbotApp(App):
         if is_first_user_message or not session["title"]:
             self.run_worker(self._generate_title(user_message), exclusive=False)
 
+        # 使用 worker 在后台运行 LLM 调用，避免阻塞主事件循环
+        self.run_worker(
+            self._generate_response(user_tokens),
+            exclusive=False
+        )
+
+    async def _generate_response(self, user_tokens: int):
+        """
+        在后台 worker 中生成 LLM 响应
+
+        Args:
+            user_tokens: 用户消息的 token 数
+        """
+        chat_view = self.query_one("#chat_view", ChatView)
+
         # 更新状态
         self.is_generating = True
 
@@ -394,6 +421,8 @@ class ChatbotApp(App):
                 chat_view.append_assistant_chunk(chunk)
                 nonlocal assistant_response
                 assistant_response += chunk
+                # 让出控制权，确保 UI 能响应
+                await asyncio.sleep(0)
 
             # 传递取消检查函数
             full_response = await self.llm_client.chat_stream(
