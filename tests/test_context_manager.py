@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from chatbot_lite.config import AppConfig, LLMConfig
-from chatbot_lite.context_manager import ContextManager
-from chatbot_lite.llm_client import LLMClient
+from clichat.config import AppConfig, LLMConfig
+from clichat.context_manager import ContextManager
+from clichat.llm_client import LLMClient
 
 
 class TestContextManager:

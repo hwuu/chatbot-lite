@@ -62,7 +62,7 @@ class QuitScreen(ModalScreen[bool]):
         """组合组件"""
         with Container(id="quit_dialog"):
             yield Label("确认退出", id="quit_title")
-            yield Label("确定要退出 Chatbot-Lite 吗？", id="quit_message")
+            yield Label("确定要退出 CliChat 吗？", id="quit_message")
             #yield Label("(按 Y 退出 / 按 N 或 Esc 取消)", id="quit_hint")
             with Horizontal(id="quit_buttons"):
                 yield Button("是 (Y)", id="yes_btn", variant="error")

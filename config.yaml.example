@@ -5,11 +5,13 @@ llm:
   api_key: "ollama"                      # 本地模型通常不验证，保留字段
   temperature: 0.7                       # 生成温度
   max_tokens: 2000                       # 最大 token 数
-  system_prompt: "You are a helpful AI assistant."  # 系统提示词
+  system_prompt: |
+    你是一个问答助手，回答要简明扼要，使用中文，输出使用 markdown 格式。
+    如果有什么不确定的问题，要反问用户，不要自己猜。
 
 # 应用配置
 app:
-  history_dir: "~/.chatbot-lite"         # 对话历史存储目录
+  history_dir: "~/.clichat"              # 对话历史存储目录
   context_strategy: "lazy_compress"      # 上下文管理策略
   compress_threshold: 0.85               # Token 达到 85% 时触发压缩
   compress_summary_tokens: 300           # 压缩后摘要的目标长度

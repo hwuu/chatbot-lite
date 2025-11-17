@@ -2,7 +2,7 @@
 
 import pytest
 
-from chatbot_lite.llm_client import ThinkTagFilter
+from clichat.llm_client import ThinkTagFilter
 
 
 class TestThinkTagFilter:

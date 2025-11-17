@@ -8,8 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from chatbot_lite.logger import get_logger
-from chatbot_lite.utils import count_tokens, truncate_text
+from clichat.logger import get_logger
+from clichat.utils import count_tokens, truncate_text
 
 
 class SessionManager:

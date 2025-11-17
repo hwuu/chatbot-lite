@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from chatbot_lite.config import Config, LLMConfig, AppConfig, load_config
+from clichat.config import Config, LLMConfig, AppConfig, load_config
 
 
 class TestLLMConfig:
@@ -62,12 +62,12 @@ class TestAppConfig:
     def test_valid_config(self):
         """测试有效配置"""
         config = AppConfig(
-            history_dir="~/.chatbot-lite",
+            history_dir="~/.clichat",
             context_strategy="lazy_compress",
             compress_threshold=0.85,
             compress_summary_tokens=300,
         )
-        assert config.history_dir == "~/.chatbot-lite"
+        assert config.history_dir == "~/.clichat"
         assert config.context_strategy == "lazy_compress"
 
     def test_default_values(self):
@@ -185,7 +185,7 @@ class TestLoadConfig:
                 "api_base": "http://localhost:11434/v1",
                 "model": "test-model",
             },
-            "app": {"history_dir": "~/.chatbot-lite-test"},
+            "app": {"history_dir": "~/.clichat-test"},
         }
 
         with open(config_file, "w", encoding="utf-8") as f:

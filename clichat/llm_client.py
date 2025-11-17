@@ -11,9 +11,9 @@ from typing import Callable, Dict, List, Awaitable
 import httpx
 from openai import AsyncOpenAI
 
-from chatbot_lite.config import LLMConfig
-from chatbot_lite.logger import get_logger
-from chatbot_lite.utils import count_tokens
+from clichat.config import LLMConfig
+from clichat.logger import get_logger
+from clichat.utils import count_tokens
 
 
 class GenerationCancelled(Exception):

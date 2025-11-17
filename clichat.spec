@@ -1,13 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 """PyInstaller 配置文件
 
-用于将 Chatbot-Lite 打包为独立可执行文件。
+用于将 CliChat 打包为独立可执行文件。
 
 构建命令：
-    pyinstaller chatbot-lite.spec
+    pyinstaller clichat.spec
 
 输出目录：
-    dist/chatbot-lite/  # one-folder 模式
+    dist/clichat/  # one-folder 模式
 """
 
 import sys
@@ -20,7 +20,7 @@ root_dir = Path.cwd()
 
 # 主程序入口
 a = Analysis(
-    ['chatbot_lite/__main__.py'],
+    ['clichat/__main__.py'],
     pathex=[str(root_dir)],
     binaries=[],
     datas=[],
@@ -70,7 +70,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='chatbot-lite',
+    name='clichat',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -91,5 +91,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='chatbot-lite',
+    name='clichat',
 )

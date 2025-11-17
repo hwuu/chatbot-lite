@@ -5,9 +5,9 @@
 
 from typing import Dict, List, Optional
 
-from chatbot_lite.config import AppConfig
-from chatbot_lite.llm_client import LLMClient
-from chatbot_lite.logger import get_logger
+from clichat.config import AppConfig
+from clichat.llm_client import LLMClient
+from clichat.logger import get_logger
 
 
 class ContextManager:

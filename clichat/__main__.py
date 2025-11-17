@@ -1,10 +1,10 @@
 """程序入口
 
 运行方式：
-    python -m chatbot_lite
+    python -m clichat
 """
 
-from chatbot_lite.ui.app import run
+from clichat.ui.app import run
 
 if __name__ == "__main__":
     run()

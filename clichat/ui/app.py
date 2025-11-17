@@ -9,21 +9,21 @@ from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Footer
 
-from chatbot_lite.config import Config, load_config
-from chatbot_lite.context_manager import ContextManager
-from chatbot_lite.llm_client import LLMClient, GenerationCancelled
-from chatbot_lite.logger import get_logger, setup_logger
-from chatbot_lite.session_manager import SessionManager
-from chatbot_lite.ui.chat_view import ChatView
-from chatbot_lite.ui.input_bar import InputBar, MessageSubmitted
-from chatbot_lite.ui.quit_screen import QuitScreen
-from chatbot_lite.ui.search_screen import SearchScreen
-from chatbot_lite.ui.session_list import SessionList, SessionSelected
-from chatbot_lite.utils import count_tokens
+from clichat.config import Config, load_config
+from clichat.context_manager import ContextManager
+from clichat.llm_client import LLMClient, GenerationCancelled
+from clichat.logger import get_logger, setup_logger
+from clichat.session_manager import SessionManager
+from clichat.ui.chat_view import ChatView
+from clichat.ui.input_bar import InputBar, MessageSubmitted
+from clichat.ui.quit_screen import QuitScreen
+from clichat.ui.search_screen import SearchScreen
+from clichat.ui.session_list import SessionList, SessionSelected
+from clichat.utils import count_tokens
 
 
 class ChatbotApp(App):
-    """Chatbot-Lite 主应用"""
+    """CliChat 主应用"""
 
     CSS = """
     Screen {

@@ -31,7 +31,7 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 # 保留项目的主 spec 文件
-!chatbot-lite.spec
+!clichat.spec
 
 # Installer logs
 pip-log.txt
@@ -212,7 +212,7 @@ __marimo__/
 config.yaml
 
 # 对话历史（本地数据）
-.chatbot-lite/
+.clichat/
 
 # Claude Code 本地配置
 .claude/

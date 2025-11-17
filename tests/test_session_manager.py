@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from chatbot_lite.session_manager import SessionManager
+from clichat.session_manager import SessionManager
 
 
 class TestSessionManager:

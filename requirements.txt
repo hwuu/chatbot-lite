@@ -1,4 +1,4 @@
-# Chatbot-Lite 依赖
+# CliChat 依赖
 
 # UI 框架
 textual>=0.47.0

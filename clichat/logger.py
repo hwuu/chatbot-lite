@@ -13,11 +13,11 @@ def setup_logger(log_dir: str = None, force: bool = False):
     设置日志系统
 
     Args:
-        log_dir: 日志目录路径，默认为 ~/.chatbot-lite/logs/
+        log_dir: 日志目录路径，默认为 ~/.clichat/logs/
         force: 强制重新设置（用于测试）
     """
     # 配置根 logger
-    root_logger = logging.getLogger("chatbot_lite")
+    root_logger = logging.getLogger("clichat")
 
     # 如果已经有 handlers 且不是强制重新设置，则跳过
     if root_logger.handlers and not force:
@@ -31,7 +31,7 @@ def setup_logger(log_dir: str = None, force: bool = False):
 
     # 确定日志目录
     if log_dir is None:
-        log_dir = os.path.expanduser("~/.chatbot-lite/logs")
+        log_dir = os.path.expanduser("~/.clichat/logs")
 
     log_path = Path(log_dir)
     log_path.mkdir(parents=True, exist_ok=True)
@@ -65,6 +65,6 @@ def get_logger(name: str) -> logging.Logger:
         Logger 实例
     """
     if name not in _loggers:
-        _loggers[name] = logging.getLogger(f"chatbot_lite.{name}")
+        _loggers[name] = logging.getLogger(f"clichat.{name}")
 
     return _loggers[name]

@@ -1,4 +1,4 @@
-# Chatbot-Lite 技术方案（最终版）
+# CliChat 技术方案（最终版）
 
 ## 一、项目概述
 
@@ -41,10 +41,10 @@ pytest-asyncio>=0.21.0
 ## 三、项目结构
 
 ```
-chatbot-lite/
-├── chatbot_lite/
+clichat/
+├── clichat/
 │   ├── __init__.py
-│   ├── __main__.py              # 入口：python -m chatbot_lite
+│   ├── __main__.py              # 入口：python -m clichat
 │   ├── config.py                # 配置加载与验证
 │   ├── llm_client.py            # LLM API 客户端（流式）
 │   ├── session_manager.py       # 会话 CRUD + 搜索
@@ -87,7 +87,7 @@ llm:
   system_prompt: "You are a helpful AI assistant."
 
 app:
-  history_dir: "~/.chatbot-lite"         # 对话历史存储目录
+  history_dir: "~/.clichat"         # 对话历史存储目录
   context_strategy: "lazy_compress"      # 上下文管理策略
   compress_threshold: 0.85               # Token 达到 85% 时触发压缩
   compress_summary_tokens: 300           # 压缩后摘要的目标长度
@@ -181,7 +181,7 @@ class LLMClient:
 
 ### 3. 会话管理 (`session_manager.py`)
 
-**存储格式** (`~/.chatbot-lite/session_20250111_143022.json`)：
+**存储格式** (`~/.clichat/session_20250111_143022.json`)：
 ```json
 {
   "session_id": "20250111_143022",
@@ -623,7 +623,7 @@ def detect_code_language(code: str) -> str:
 
 ### **安装**
 ```bash
-cd chatbot-lite
+cd clichat
 pip install -r requirements.txt
 cp config.yaml.example config.yaml
 # 编辑 config.yaml，配置本地模型地址
@@ -631,7 +631,7 @@ cp config.yaml.example config.yaml
 
 ### **启动**
 ```bash
-python -m chatbot_lite
+python -m clichat
 ```
 
 ### **快捷键**

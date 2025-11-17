@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from chatbot_lite.logger import get_logger, setup_logger
+from clichat.logger import get_logger, setup_logger
 
 
 class TestLogger:

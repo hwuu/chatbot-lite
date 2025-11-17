@@ -12,8 +12,8 @@ from openai.types.chat.chat_completion_chunk import (
 )
 from openai.types.chat.chat_completion_message import ChatCompletionMessage
 
-from chatbot_lite.config import LLMConfig
-from chatbot_lite.llm_client import LLMClient
+from clichat.config import LLMConfig
+from clichat.llm_client import LLMClient
 
 
 class TestLLMClient:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Chatbot-Lite 构建脚本
+"""CliChat 构建脚本
 
 用于将应用打包为独立可执行文件。
 
@@ -12,7 +12,7 @@
     - Linux (bin)
 
 输出目录：
-    dist/chatbot-lite/
+    dist/clichat/
 """
 
 import os
@@ -75,7 +75,7 @@ def build_executable():
 
     # 运行 PyInstaller
     result = subprocess.run(
-        [sys.executable, "-m", "PyInstaller", "chatbot-lite.spec", "--clean"],
+        [sys.executable, "-m", "PyInstaller", "clichat.spec", "--clean"],
         capture_output=True,
         text=True
     )
@@ -98,13 +98,13 @@ def create_readme():
     machine = platform.machine()
 
     if system == "Windows":
-        exe_name = "chatbot-lite.exe"
+        exe_name = "clichat.exe"
     elif system == "Darwin":  # macOS
-        exe_name = "chatbot-lite"
+        exe_name = "clichat"
     else:  # Linux
-        exe_name = "chatbot-lite"
+        exe_name = "clichat"
 
-    readme_content = f"""# Chatbot-Lite
+    readme_content = f"""# CliChat
 
 终端聊天机器人应用
 
@@ -118,12 +118,12 @@ def create_readme():
 
 ### Windows
 ```bash
-chatbot-lite.exe
+clichat.exe
 ```
 
 ### macOS / Linux
 ```bash
-./chatbot-lite
+./clichat
 ```
 
 ## 配置
@@ -131,7 +131,7 @@ chatbot-lite.exe
 首次运行时，程序会自动在用户目录创建配置文件：
 
 ```
-~/.chatbot-lite/config.yaml
+~/.clichat/config.yaml
 ```
 
 请编辑此文件以设置：
@@ -154,15 +154,15 @@ chatbot-lite.exe
 
 对话历史保存在：
 ```
-~/.chatbot-lite/history/
+~/.clichat/history/
 ```
 
 ## 支持
 
-GitHub: https://github.com/hwuu/chatbot-lite
+GitHub: https://github.com/hwuu/clichat
 """
 
-    readme_path = Path("dist/chatbot-lite/README.txt")
+    readme_path = Path("dist/clichat/README.txt")
     readme_path.write_text(readme_content, encoding="utf-8")
     print(f"✓ 创建 {readme_path}")
 
@@ -170,7 +170,7 @@ GitHub: https://github.com/hwuu/chatbot-lite
 def main():
     """主函数"""
     print("=" * 60)
-    print("  Chatbot-Lite 构建工具")
+    print("  CliChat 构建工具")
     print("=" * 60)
 
     # 检查 PyInstaller
@@ -200,15 +200,15 @@ def main():
     print("\n" + "=" * 60)
     print("  构建完成！")
     print("=" * 60)
-    print(f"\n可执行文件位置: dist/chatbot-lite/")
+    print(f"\n可执行文件位置: dist/clichat/")
 
     system = platform.system()
     if system == "Windows":
-        print("运行命令: dist\\chatbot-lite\\chatbot-lite.exe")
+        print("运行命令: dist\\clichat\\clichat.exe")
     else:
-        print("运行命令: dist/chatbot-lite/chatbot-lite")
+        print("运行命令: dist/clichat/clichat")
 
-    print("\n提示: 首次运行会自动创建配置文件 ~/.chatbot-lite/config.yaml")
+    print("\n提示: 首次运行会自动创建配置文件 ~/.clichat/config.yaml")
 
 
 if __name__ == "__main__":

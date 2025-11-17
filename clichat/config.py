@@ -99,7 +99,7 @@ class Config(BaseModel):
 
 
 # 默认配置模板
-DEFAULT_CONFIG_TEMPLATE = """# Chatbot-Lite 配置文件
+DEFAULT_CONFIG_TEMPLATE = """# CliChat 配置文件
 # 首次运行自动生成，请根据需要修改
 
 llm:
@@ -111,7 +111,7 @@ llm:
   system_prompt: "You are a helpful AI assistant."  # 系统提示词
 
 app:
-  history_dir: "~/.chatbot-lite/history"    # 对话历史存储目录
+  history_dir: "~/.clichat/history"    # 对话历史存储目录
   context_strategy: "lazy_compress"         # 上下文管理策略
   compress_threshold: 0.85                  # Token 达到 85% 时触发压缩
   compress_summary_tokens: 300              # 压缩后摘要的目标长度
@@ -125,9 +125,9 @@ def get_default_config_path() -> Path:
     获取默认配置文件路径
 
     Returns:
-        Path: ~/.chatbot-lite/config.yaml
+        Path: ~/.clichat/config.yaml
     """
-    return Path.home() / ".chatbot-lite" / "config.yaml"
+    return Path.home() / ".clichat" / "config.yaml"
 
 
 def create_default_config(config_path: Optional[Path] = None) -> Path:
@@ -135,7 +135,7 @@ def create_default_config(config_path: Optional[Path] = None) -> Path:
     创建默认配置文件
 
     Args:
-        config_path: 配置文件路径，默认为 ~/.chatbot-lite/config.yaml
+        config_path: 配置文件路径，默认为 ~/.clichat/config.yaml
 
     Returns:
         Path: 创建的配置文件路径
@@ -157,10 +157,10 @@ def load_config(config_path: Optional[str] = None) -> Config:
     """
     加载配置文件
 
-    首次运行时会自动创建默认配置文件到 ~/.chatbot-lite/config.yaml
+    首次运行时会自动创建默认配置文件到 ~/.clichat/config.yaml
 
     Args:
-        config_path: 配置文件路径，默认为 ~/.chatbot-lite/config.yaml
+        config_path: 配置文件路径，默认为 ~/.clichat/config.yaml
 
     Returns:
         Config: 配置对象
